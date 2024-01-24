@@ -11,10 +11,13 @@ A Python script for QGIS that generates a cycling quality index from OpenStreetM
 * Calculation of index values and factors for the mentioned property groups and derivation of a total index
 
 ### How to use this script
-1. Run [Overpass-Query](https://overpass-turbo.eu/s/1G3t) for road and way network suitable for cycling 
+1. Run [Overpass-Query](https://overpass-turbo.eu/s/1G3t) for for the desired area/region to get road and way network suitable for cycling 
 2. Export result as GeoJSON to 'data/way_import.geojson'
 3. Run this python script in QGIS
    1. "Plugins" => "Python Console"
    1. (If internal Python Editor Panel is hidden: Right click in Console => "Show Editor")
    1. Open File in QGIS Python Editor
    1. Run from there (Note: Do _not_ use the "Browser" => File => "Run Script")
+
+### Example visualization
+![example_index](https://github.com/SupaplexOSM/OSM-Cycling-Quality-Index/assets/66696066/05a962da-5648-406d-a4bb-6a606328e8d4)
