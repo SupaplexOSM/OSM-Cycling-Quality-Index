@@ -2,12 +2,12 @@
 A Python script for QGIS that generates a cycling quality index from OpenStreetMap data for every way segment. The type of way, width and surface attributes, characteristics of parallel roads and a few other attributes are processed and an index value from 0 to 100 is calculated, which indicates the suitability of a way/road segment for cycle traffic.
 
 ### Included way and road properties
-* Distinction of 19 way types, depending on OSM tagging (e.g. cycle tracks and different types of lanes, sidepath or non-sidepath cycle path, shared footways, roads, traffic or bus lanes, bicycle roads, crossings, links, cycle prohibitons...)
+* Distinction of 16 way types, depending on OSM tagging (e.g. cycle tracks and different types of lanes, sidepath or non-sidepath cycle path, shared or segregated path, shared footways/roads/traffic or bus lanes, bicycle roads, crossings, links...)
 * Basic geometric sidepath detection, if not tagged explicitly
 * Evaluation of width attributes and surface characteristics (surface and smoothness)
 * Evaluation of the road classification and maximum speed (for shared roads and side paths)
-* Evaluation of separation and buffer characteristics (TODO)
-* Evaluation of other attributes such as lighting, incline, adjacent parking lanes... (TODO)
+* Evaluation of separation and buffer characteristics
+* Evaluation of other attributes such as lighting, adjacent parking lanes or surface colour
 * Calculation of index values and factors for the mentioned property groups and derivation of a total index
 
 ### How to use this script
@@ -20,4 +20,5 @@ A Python script for QGIS that generates a cycling quality index from OpenStreetM
    1. Run from there (Note: Do _not_ use the "Browser" => File => "Run Script")
 
 ### Example visualization
-![example_index](https://github.com/SupaplexOSM/OSM-Cycling-Quality-Index/assets/66696066/05a962da-5648-406d-a4bb-6a606328e8d4)
+An interactive demo map for Berlin can be found here: [OpenStreetMap Verkehrswende / Cycling Quality Index](https://www.osm-verkehrswende.org/cqi/map/)
+![grafik](https://github.com/SupaplexOSM/OSM-Cycling-Quality-Index/assets/66696066/c13688d4-9a82-490c-bcfd-33290fd4d7b0)
