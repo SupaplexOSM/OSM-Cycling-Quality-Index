@@ -1,0 +1,8 @@
+__pycache__
+*.log
+.vscode
+gui.ini
+.idea
+data/*.geojson
+data/index_style.qml
+symbology-style.db
