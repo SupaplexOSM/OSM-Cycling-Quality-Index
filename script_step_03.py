@@ -1,20 +1,14 @@
 import imp
-import math
 import time
-from collections import defaultdict
-from os.path import exists
 
-import qgis.processing as processing
-from qgis import *
-from qgis.core import *
-from qgis.PyQt.QtCore import *
+from qgis.core import NULL, edit
 
+import helper_functions
 import vars_settings
 
 imp.reload(vars_settings)
-import helper_functions
-
 imp.reload(helper_functions)
+
 
 def step_03(
     layer,
@@ -28,11 +22,11 @@ def step_03(
     with edit(layer):
         for feature in layer.getFeatures():
 
-            #exclude segments with no public bicycle access
+            # exclude segments with no public bicycle access
             if helper_functions.getAccess(feature, 'bicycle') and helper_functions.getAccess(feature, 'bicycle') not in ['yes', 'permissive', 'designated', 'use_sidepath', 'optional_sidepath', 'discouraged']:
                 layer.deleteFeature(feature.id())
 
-            #exclude informal paths without explicit bicycle access
+            # exclude informal paths without explicit bicycle access
             if feature.attribute('highway') == 'path' and feature.attribute('informal') == 'yes' and feature.attribute('bicycle') == NULL:
                 layer.deleteFeature(feature.id())
 
@@ -42,12 +36,12 @@ def step_03(
 
             bicycle = feature.attribute('bicycle')
             foot = feature.attribute('foot')
-            vehicle = feature.attribute('vehicle')
+            # vehicle = feature.attribute('vehicle')  # TODO: remove this line, variable is unused
             is_sidepath = feature.attribute('is_sidepath')
 
-            #before determining the way type according to highway tagging, first check for some specific way types that are tagged independent from "highway":
+            # before determining the way type according to highway tagging, first check for some specific way types that are tagged independent from "highway":
             if feature.attribute('bicycle_road') == 'yes':
-                #features with a "side" attribute are representing a cycleway or footway adjacent to the road with offset geometry - treat them as separate path, not as a bicycle road
+                # features with a "side" attribute are representing a cycleway or footway adjacent to the road with offset geometry - treat them as separate path, not as a bicycle road
                 side = feature.attribute('side')
                 if not side:
                     way_type = 'bicycle road'
@@ -56,16 +50,16 @@ def step_03(
             if feature.attribute('footway') == 'crossing' or feature.attribute('cycleway') == 'crossing' or feature.attribute('path') == 'crossing' or feature.attribute('bridleway') == 'crossing':
                 way_type = 'crossing'
 
-            #for all other cases: derive way type according to their primary "highway" tagging:
+            # for all other cases: derive way type according to their primary "highway" tagging:
             if way_type == '':
-                #for footways (with bicycle access):
+                # for footways (with bicycle access):
                 if highway in ['footway', 'pedestrian', 'bridleway', 'steps']:
                     if bicycle in ['yes', 'designated', 'permissive']:
                         way_type = 'shared footway'
                     else:
-                        layer.deleteFeature(feature.id()) #don't process ways with restricted bicycle access
+                        layer.deleteFeature(feature.id())  # don't process ways with restricted bicycle access
 
-                #for path:
+                # for path:
                 elif highway == 'path':
                     if foot == 'designated' and bicycle != 'designated':
                         way_type = 'shared footway'
@@ -75,7 +69,7 @@ def step_03(
                         else:
                             way_type = 'shared path'
 
-                #for cycleways:
+                # for cycleways:
                 elif highway == 'cycleway':
                     if foot in ['yes', 'designated', 'permissive']:
                         way_type = 'shared path'
@@ -84,8 +78,8 @@ def step_03(
                         if separation_foot == 'no':
                             way_type = 'segregated path'
                         else:
-                            if not is_sidepath in ['yes', 'no']:
-                                #Use the geometrically determined sidepath value, if is_sidepath isn't specified
+                            if is_sidepath not in ['yes', 'no']:
+                                # Use the geometrically determined sidepath value, if is_sidepath isn't specified
                                 if feature.attribute('proc_sidepath') == 'yes':
                                     way_type = 'cycle track'
                                 else:
@@ -95,7 +89,7 @@ def step_03(
 
                             elif is_sidepath == 'yes':
                                 separation_motor_vehicle = helper_functions.deriveSeparation(feature, 'motor_vehicle')
-                                if not separation_motor_vehicle in [NULL, 'no', 'none']:
+                                if separation_motor_vehicle not in [NULL, 'no', 'none']:
                                     if 'kerb' in separation_motor_vehicle or 'tree_row' in separation_motor_vehicle:
                                         way_type = 'cycle track'
                                     else:
@@ -105,22 +99,22 @@ def step_03(
                             else:
                                 way_type = 'cycle path'
 
-                #for service roads/tracks:
+                # for service roads/tracks:
                 elif highway == 'service' or highway == 'track':
                     way_type = 'track or service'
 
-                #for regular roads:
+                # for regular roads:
                 else:
                     cycleway = feature.attribute('cycleway')
                     cycleway_both = feature.attribute('cycleway:both')
                     cycleway_left = feature.attribute('cycleway:left')
                     cycleway_right = feature.attribute('cycleway:right')
                     bicycle = feature.attribute('bicycle')
-                    side = feature.attribute('side') #features with a "side" attribute are representing a cycleway or footway adjacent to the road with offset geometry
-                    #if this feature don't represent a cycle lane, it's a center line representing the shared road
+                    side = feature.attribute('side')  # features with a "side" attribute are representing a cycleway or footway adjacent to the road with offset geometry
+                    # if this feature don't represent a cycle lane, it's a center line representing the shared road
                     if not side:
-                        #distinguish shared roads (without lane markings) and shared traffic lanes (with lane markings)
-                        #(assume that there are lane markings on primary and secondary roads, even if not tagged explicitly)
+                        # distinguish shared roads (without lane markings) and shared traffic lanes (with lane markings)
+                        # (assume that there are lane markings on primary and secondary roads, even if not tagged explicitly)
                         lane_markings = feature.attribute('lane_markings')
                         if lane_markings == 'yes' or (lane_markings != 'yes' and highway in ['motorway', 'trunk', 'primary', 'secondary']):
                             way_type = 'shared traffic lane'
@@ -131,14 +125,14 @@ def step_03(
                         if way_type == 'sidewalk':
                             way_type = 'shared footway'
                         else:
-                            #for cycle lanes
+                            # for cycle lanes
                             if cycleway == 'lane' or cycleway_both == 'lane' or (side == 'right' and cycleway_right == 'lane') or (side == 'left' and cycleway_left == 'lane'):
                                 cycleway_lanes = feature.attribute('cycleway:lanes')
                                 if cycleway_lanes and 'no|lane|no' in cycleway_lanes:
                                     way_type = 'cycle lane (central)'
                                 else:
                                     separation_motor_vehicle = helper_functions.deriveSeparation(feature, 'motor_vehicle')
-                                    if not separation_motor_vehicle in [NULL, 'no', 'none']:
+                                    if separation_motor_vehicle not in [NULL, 'no', 'none']:
                                         way_type = 'cycle lane (protected)'
                                     else:
                                         cycleway_lane = feature.attribute('cycleway:lane')
@@ -149,13 +143,18 @@ def step_03(
                                             way_type = 'cycle lane (exclusive)'
                                         else:
                                             way_type = 'cycle lane (advisory)'
-                            #for cycle tracks
+                            # for cycle tracks
                             elif cycleway == 'track' or cycleway_both == 'track' or (side == 'right' and cycleway_right == 'track') or (side == 'left' and cycleway_left == 'track'):
                                 cycleway_foot = feature.attribute('cycleway:foot')
                                 cycleway_both_foot = feature.attribute('cycleway:both:foot')
                                 cycleway_left_foot = feature.attribute('cycleway:left:foot')
                                 cycleway_right_foot = feature.attribute('cycleway:right:foot')
-                                if cycleway_foot in ['yes', 'designated', 'permissive'] or cycleway_both_foot in ['yes', 'designated', 'permissive'] or (side == 'right' and cycleway_right_foot in ['yes', 'designated', 'permissive']) or (side == 'left' and cycleway_left_foot in ['yes', 'designated', 'permissive']):
+                                if (
+                                    cycleway_foot in ['yes', 'designated', 'permissive']
+                                    or cycleway_both_foot in ['yes', 'designated', 'permissive']
+                                    or (side == 'right' and cycleway_right_foot in ['yes', 'designated', 'permissive'])
+                                    or (side == 'left' and cycleway_left_foot in ['yes', 'designated', 'permissive'])
+                                ):
                                     way_type = 'shared path'
                                 else:
                                     cycleway_segregated = feature.attribute('cycleway:segregated')
@@ -172,17 +171,17 @@ def step_03(
                                             way_type = 'segregated path'
                                         else:
                                             separation_motor_vehicle = helper_functions.deriveSeparation(feature, 'motor_vehicle')
-                                            if not separation_motor_vehicle in [NULL, 'no', 'none']:
+                                            if separation_motor_vehicle not in [NULL, 'no', 'none']:
                                                 if 'kerb' in separation_motor_vehicle or 'tree_row' in separation_motor_vehicle:
                                                     way_type = 'cycle track'
                                                 else:
                                                     way_type = 'cycle lane (protected)'
                                             else:
                                                 way_type = 'cycle track'
-                            #for shared bus lanes
+                            # for shared bus lanes
                             elif cycleway == 'share_busway' or cycleway_both == 'share_busway' or (side == 'right' and cycleway_right == 'share_busway') or (side == 'left' and cycleway_left == 'share_busway'):
                                 way_type = 'shared bus lane'
-                            #for other vales - no cycle way
+                            # for other vales - no cycle way
                             else:
                                 sidewalk_bicycle = feature.attribute('sidewalk:bicycle')
                                 sidewalk_both_bicycle = feature.attribute('sidewalk:both:bicycle')

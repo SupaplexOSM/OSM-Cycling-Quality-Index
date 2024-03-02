@@ -1,18 +1,15 @@
 import imp
-import math
 import time
-from os.path import exists
 
 import qgis.processing as processing
-from qgis import *
-from qgis.core import *
-from qgis.PyQt.QtCore import *
+from qgis.core import (
+    NULL, QgsProcessingFeatureSourceDefinition, QgsProject, edit
+)
 
+import helper_functions
 import vars_settings
 
 imp.reload(vars_settings)
-import helper_functions
-
 imp.reload(helper_functions)
 
 
@@ -20,33 +17,76 @@ def step_01(layer, id_proc_highway, id_proc_maxspeed, id_proc_sidepath):
     """
     Check paths whether they are sidepath (a path along a road)
     """
-    sidepath_buffer_size = 22 #check for adjacent roads for ... meters around a way
-    sidepath_buffer_distance = 100 #do checks for adjacent roads every ... meters along a way
+    sidepath_buffer_size = 22  # check for adjacent roads for ... meters around a way
+    sidepath_buffer_distance = 100  # do checks for adjacent roads every ... meters along a way
 
     print(time.strftime('%H:%M:%S', time.localtime()), 'Sidepath check...')
     print(time.strftime('%H:%M:%S', time.localtime()), '   Create way layers...')
-    #create path layer: check all path, footways or cycleways for their sidepath status
-    layer_path = processing.run('qgis:extractbyexpression', { 'INPUT' : layer, 'EXPRESSION' : '"highway" IS \'cycleway\' OR "highway" IS \'footway\' OR "highway" IS \'path\' OR "highway" IS \'bridleway\' OR "highway" IS \'steps\'', 'OUTPUT': 'memory:'})['OUTPUT']
-    #create road layer: extract all other highway types (except tracks)
-    layer_roads = processing.run('qgis:extractbyexpression', { 'INPUT' : layer, 'EXPRESSION' : '"highway" IS NOT \'cycleway\' AND "highway" IS NOT \'footway\' AND "highway" IS NOT \'path\' AND "highway" IS NOT \'bridleway\' AND "highway" IS NOT \'steps\' AND "highway" IS NOT \'track\'', 'OUTPUT': 'memory:'})['OUTPUT']
+    # create path layer: check all path, footways or cycleways for their sidepath status
+    layer_path = processing.run(
+        'qgis:extractbyexpression',
+        {
+            'INPUT': layer,
+            'EXPRESSION': """"highway" IS 'cycleway' OR "highway" IS 'footway' OR "highway" IS 'path' OR "highway" IS 'bridleway' OR "highway" IS 'steps'""",
+            'OUTPUT': 'memory:'
+        }
+    )['OUTPUT']
+    # create road layer: extract all other highway types (except tracks)
+    layer_roads = processing.run(
+        'qgis:extractbyexpression',
+        {
+            'INPUT': layer,
+            'EXPRESSION': """"highway" IS NOT 'cycleway' AND "highway" IS NOT 'footway' AND "highway" IS NOT 'path' AND "highway" IS NOT 'bridleway' AND "highway" IS NOT 'steps' AND "highway" IS NOT 'track'""",
+            'OUTPUT': 'memory:'
+        }
+    )['OUTPUT']
 
     print(time.strftime('%H:%M:%S', time.localtime()), '   Create check points...')
-    #create "check points" along each segment (to check for near/parallel highways at every checkpoint)
-    layer_path_points = processing.run('native:pointsalonglines', {'INPUT' : layer_path, 'DISTANCE' : sidepath_buffer_distance, 'OUTPUT': 'memory:'})['OUTPUT']
-    layer_path_points_endpoints = processing.run('native:extractspecificvertices', { 'INPUT' : layer_path, 'VERTICES' : '-1', 'OUTPUT': 'memory:'})['OUTPUT']
-    layer_path_points = processing.run('native:mergevectorlayers', { 'LAYERS' : [layer_path_points, layer_path_points_endpoints], 'OUTPUT': 'memory:'})['OUTPUT']
-    #create "check buffers" (to check for near/parallel highways with in the given distance)
-    layer_path_points_buffers = processing.run('native:buffer', { 'INPUT' : layer_path_points, 'DISTANCE' : sidepath_buffer_size, 'OUTPUT': 'memory:'})['OUTPUT']
+
+    # create "check points" along each segment (to check for near/parallel highways at every checkpoint)
+    layer_path_points = processing.run(
+        'native:pointsalonglines',
+        {
+            'INPUT': layer_path,
+            'DISTANCE': sidepath_buffer_distance,
+            'OUTPUT': 'memory:'
+        }
+    )['OUTPUT']
+    layer_path_points_endpoints = processing.run(
+        'native:extractspecificvertices',
+        {
+            'INPUT': layer_path,
+            'VERTICES': '-1',
+            'OUTPUT': 'memory:'
+        }
+    )['OUTPUT']
+    layer_path_points = processing.run(
+        'native:mergevectorlayers',
+        {
+            'LAYERS': [layer_path_points, layer_path_points_endpoints],
+            'OUTPUT': 'memory:'
+        }
+    )['OUTPUT']
+
+    # create "check buffers" (to check for near/parallel highways with in the given distance)
+    layer_path_points_buffers = processing.run(
+        'native:buffer',
+        {
+            'INPUT': layer_path_points,
+            'DISTANCE': sidepath_buffer_size,
+            'OUTPUT': 'memory:'
+        }
+    )['OUTPUT']
     QgsProject.instance().addMapLayer(layer_path_points_buffers, False)
 
     print(time.strftime('%H:%M:%S', time.localtime()), '   Check for adjacent roads...')
 
-    #for all check points: Save nearby road id's, names and highway classes in a dict
+    # for all check points: Save nearby road id's, names and highway classes in a dict
     sidepath_dict = {}
     for buffer in layer_path_points_buffers.getFeatures():
         buffer_id = buffer.attribute('id')
         buffer_layer = buffer.attribute('layer')
-        if not buffer_id in sidepath_dict:
+        if buffer_id not in sidepath_dict:
             sidepath_dict[buffer_id] = {}
             sidepath_dict[buffer_id]['checks'] = 1
             sidepath_dict[buffer_id]['id'] = {}
@@ -57,7 +97,15 @@ def step_01(layer, id_proc_highway, id_proc_maxspeed, id_proc_sidepath):
             sidepath_dict[buffer_id]['checks'] += 1
         layer_path_points_buffers.removeSelection()
         layer_path_points_buffers.select(buffer.id())
-        processing.run('native:selectbylocation', {'INPUT' : layer_roads, 'INTERSECT' : QgsProcessingFeatureSourceDefinition(layer_path_points_buffers.id(), selectedFeaturesOnly=True), 'METHOD' : 0, 'PREDICATE' : [0,6]})
+        processing.run(
+            'native:selectbylocation',
+            {
+                'INPUT': layer_roads,
+                'INTERSECT': QgsProcessingFeatureSourceDefinition(layer_path_points_buffers.id(), selectedFeaturesOnly=True),
+                'METHOD': 0,
+                'PREDICATE': [0, 6]
+            }
+        )
 
         id_list = []
         highway_list = []
@@ -66,18 +114,19 @@ def step_01(layer, id_proc_highway, id_proc_maxspeed, id_proc_sidepath):
         for road in layer_roads.selectedFeatures():
             road_layer = road.attribute('layer')
             if buffer_layer != road_layer:
-                continue #only consider geometries in the same layer
+                # only consider geometries in the same layer
+                continue
             road_id = road.attribute('id')
             road_highway = road.attribute('highway')
             road_name = road.attribute('name')
-            road_maxspeed = helper_functions.getNumber(road.attribute('maxspeed'))
-            if not road_id in id_list:
+            road_maxspeed = helper_functions.cast_to_float(road.attribute('maxspeed'))
+            if road_id not in id_list:
                 id_list.append(road_id)
-            if not road_highway in highway_list:
+            if road_highway not in highway_list:
                 highway_list.append(road_highway)
-            if not road_highway in maxspeed_dict or maxspeed_dict[road_highway] < road_maxspeed:
+            if road_highway not in maxspeed_dict or maxspeed_dict[road_highway] < road_maxspeed:
                 maxspeed_dict[road_highway] = road_maxspeed
-            if not road_name in name_list:
+            if road_name not in name_list:
                 name_list.append(road_name)
         for road_id in id_list:
             if road_id in sidepath_dict[buffer_id]['id']:
@@ -96,12 +145,12 @@ def step_01(layer, id_proc_highway, id_proc_maxspeed, id_proc_sidepath):
                 sidepath_dict[buffer_id]['name'][road_name] = 1
 
         for highway in maxspeed_dict.keys():
-            if not highway in sidepath_dict[buffer_id]['maxspeed'] or sidepath_dict[buffer_id]['maxspeed'][highway] < maxspeed_dict[highway]:
+            if highway not in sidepath_dict[buffer_id]['maxspeed'] or sidepath_dict[buffer_id]['maxspeed'][highway] < maxspeed_dict[highway]:
                 sidepath_dict[buffer_id]['maxspeed'][highway] = maxspeed_dict[highway]
 
     highway_class_list = ['motorway', 'motorway_link', 'trunk', 'trunk_link', 'primary', 'primary_link', 'secondary', 'secondary_link', 'tertiary', 'tertiary_link', 'unclassified', 'residential', 'road', 'living_street', 'service', 'pedestrian', NULL]
 
-    #a path is considered a sidepath if at least two thirds of its check points are found to be close to road segments with the same OSM ID, highway class or street name
+    # a path is considered a sidepath if at least two thirds of its check points are found to be close to road segments with the same OSM ID, highway class or street name
     with edit(layer):
         for feature in layer.getFeatures():
             hw = feature.attribute('highway')
@@ -109,8 +158,8 @@ def step_01(layer, id_proc_highway, id_proc_maxspeed, id_proc_sidepath):
             if maxspeed == 'walk':
                 maxspeed = 10
             else:
-                maxspeed = helper_functions.getNumber(maxspeed)
-            if not hw in ['cycleway', 'footway', 'path', 'bridleway', 'steps']:
+                maxspeed = helper_functions.cast_to_float(maxspeed)
+            if hw not in ['cycleway', 'footway', 'path', 'bridleway', 'steps']:
                 layer.changeAttributeValue(feature.id(), id_proc_highway, hw)
                 layer.changeAttributeValue(feature.id(), id_proc_maxspeed, maxspeed)
                 continue
@@ -152,7 +201,7 @@ def step_01(layer, id_proc_highway, id_proc_maxspeed, id_proc_sidepath):
 
             layer.changeAttributeValue(feature.id(), id_proc_sidepath, is_sidepath)
 
-            #derive the highway class of the associated road
+            # derive the highway class of the associated road
             if not is_sidepath_of and is_sidepath == 'yes':
                 if len(sidepath_dict[id]['highway']):
                     max_value = max(sidepath_dict[id]['highway'].values())
@@ -169,8 +218,8 @@ def step_01(layer, id_proc_highway, id_proc_maxspeed, id_proc_sidepath):
                 maxspeed = sidepath_dict[id]['maxspeed'][is_sidepath_of]
                 if maxspeed:
                     layer.changeAttributeValue(feature.id(), id_proc_maxspeed, maxspeed)
-            #transfer names to sidepath
+            # transfer names to sidepath
             if is_sidepath == 'yes' and len(sidepath_dict[id]['name']):
-                name = max(sidepath_dict[id]['name'], key=lambda k: sidepath_dict[id]['name'][k]) #the most frequent name in the surrounding
+                name = max(sidepath_dict[id]['name'], key=lambda k: sidepath_dict[id]['name'][k])  # the most frequent name in the surrounding
                 if name:
                     layer.changeAttributeValue(feature.id(), layer.fields().indexOf('name'), name)

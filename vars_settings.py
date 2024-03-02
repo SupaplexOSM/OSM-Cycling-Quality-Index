@@ -4,25 +4,26 @@ place to put setting variables to be imported and used as constants
 
 from collections import defaultdict
 
-from qgis import *
-from qgis.core import *
-from qgis.PyQt.QtCore import *
+from qgis.core import (
+    NULL, QgsCoordinateReferenceSystem, QgsCoordinateTransform,
+    QgsCoordinateTransformContext, QgsProject, QgsVectorFileWriter
+)
 
-#right or left hand traffic?
-#TODO: left hand traffic not supported yet in most cases
+# right or left hand traffic?
+# TODO: left hand traffic not supported yet in most cases
 right_hand_traffic = True
 
-#offset distance for sidepath ways
-#-> set variable to 'realistic' (offset is derived from osm tags like width values)
-#-> or set to a number for a static offset (meter, can also be 0, if no offset is needed, e.g. for better routing analysis)
+# offset distance for sidepath ways
+# -> set variable to 'realistic' (offset is derived from osm tags like width values)
+# -> or set to a number for a static offset (meter, can also be 0, if no offset is needed, e.g. for better routing analysis)
 offset_distance = 0
-#offset_distance = 'realistic'
+# offset_distance = 'realistic'
 
-#Default oneway on cycle lanes and tracks
-default_oneway_cycle_lane = 'yes' # assume that cycle lanes are oneways
-default_oneway_cycle_track = 'yes' # assume that cycle tracks are oneways
+# Default oneway on cycle lanes and tracks
+default_oneway_cycle_lane = 'yes'  # assume that cycle lanes are oneways
+default_oneway_cycle_track = 'yes'  # assume that cycle tracks are oneways
 
-#highway values with cycling prohibition
+# highway values with cycling prohibition
 cycling_highway_prohibition_list = ['motorway', 'motorway_link', 'trunk', 'trunk_link']
 
 
@@ -53,23 +54,23 @@ for key, value in {
 }.items():
     default_highway_width_dict[key] = value
 
-#Default values for width quality evaluations on shared roads:
-default_width_traffic_lane = 3.2        # average width of a driving lane (for common motor cars)
-default_width_bus_lane = 4.5            # average width of a bus/psv lane
-default_width_cycle_lane = 1.4          # average width of a cycle lane
-default_width_parking_parallel = 2.2    # average width of parallel parking
-default_width_parking_diagonal = 4.5    # average width of diagonal parking
-default_width_parking_perpendicular = 5.0 # average width of perpendicular parking
+# Default values for width quality evaluations on shared roads:
+default_width_traffic_lane = 3.2           # average width of a driving lane (for common motor cars)
+default_width_bus_lane = 4.5               # average width of a bus/psv lane
+default_width_cycle_lane = 1.4             # average width of a cycle lane
+default_width_parking_parallel = 2.2       # average width of parallel parking
+default_width_parking_diagonal = 4.5       # average width of diagonal parking
+default_width_parking_perpendicular = 5.0  # average width of perpendicular parking
 
-#default_width_motorcar = 2.0            # average width of a motorcar
-#default_width_cyclist = 1.0             # average width of a bicycle with a cyclist
-#default_distance_overtaking = 1.5       # minimum overtaking distance when overtaking a bicyclist
-#default_distance_motorcar_passing = 0.8 # minimum distance between motorcars while passing each other
+# default_width_motorcar = 2.0             # average width of a motorcar
+# default_width_cyclist = 1.0              # average width of a bicycle with a cyclist
+# default_distance_overtaking = 1.5        # minimum overtaking distance when overtaking a bicyclist
+# default_distance_motorcar_passing = 0.8  # minimum distance between motorcars while passing each other
 
-#Default surface values
-default_cycleway_surface_tracks = 'paving_stones' # common surface on cycle tracks
-default_cycleway_surface_lanes = 'asphalt' # common surface on cycle lanes
-default_highway_surface_dict = { # common surface on highways
+# Default surface values
+default_cycleway_surface_tracks = 'paving_stones'  # common surface on cycle tracks
+default_cycleway_surface_lanes = 'asphalt'  # common surface on cycle lanes
+default_highway_surface_dict = {  # common surface on highways
     'motorway': 'asphalt',
     'motorway_link': 'asphalt',
     'trunk': 'asphalt',
@@ -92,7 +93,7 @@ default_highway_surface_dict = { # common surface on highways
     'path': 'paving_stones'
 }
 
-default_track_surface_dict = { # common surface on tracks according to tracktype
+default_track_surface_dict = {  # common surface on tracks according to tracktype
     'grade1': 'asphalt',
     'grade2': 'compacted',
     'grade3': 'unpaved',
@@ -211,7 +212,7 @@ separation_level_dict = {
     'ELSE': 0.3
 }
 
-#base index for way types (0 .. 100)
+# base index for way types (0 .. 100)
 base_index_dict = {
     'cycle path': 100,
     'cycle track': 90,
@@ -231,7 +232,7 @@ base_index_dict = {
     'crossing': 60
 }
 
-#base index for roads with restricted motor vehicle access
+# base index for roads with restricted motor vehicle access
 motor_vehicle_access_index_dict = {
     'no': 100,
     'agricultural': 90,
@@ -245,22 +246,22 @@ motor_vehicle_access_index_dict = {
     'destination': 70
 }
 
-#list of traffic signs, that make a way or path mandatory to use for cyclists
-#this lists are for DE:; adjust it if needed
+# list of traffic signs, that make a way or path mandatory to use for cyclists
+# this lists are for DE:; adjust it if needed
 mandatory_traffic_sign_list = ['237', '240', '241']
 not_mandatory_traffic_sign_list = ['none', '1022']
 
-#output/save options
+# output/save options
 crs_from = "EPSG:4326"
 crs_to = "EPSG:25833"
 transform_context = QgsCoordinateTransformContext()
 transform_context.addCoordinateOperation(QgsCoordinateReferenceSystem(crs_from), QgsCoordinateReferenceSystem(crs_to), "")
-coordinateTransformContext=QgsProject.instance().transformContext()
+coordinateTransformContext = QgsProject.instance().transformContext()
 save_options = QgsVectorFileWriter.SaveVectorOptions()
 save_options.driverName = 'GeoJSON'
 save_options.ct = QgsCoordinateTransform(QgsCoordinateReferenceSystem(crs_from), QgsCoordinateReferenceSystem(crs_to), coordinateTransformContext)
 
-#list of attributes that are retained in the saved file
+# list of attributes that are retained in the saved file
 retained_attributes_list = [
     'id',
     'name',
@@ -286,13 +287,13 @@ retained_attributes_list = [
     'fac_surface',
     'fac_highway',
     'fac_maxspeed',
-#    'fac_protection_level',
-#    'prot_level_separation_left',
-#    'prot_level_separation_right',
-#    'prot_level_buffer_left',
-#    'prot_level_buffer_right',
-#    'prot_level_left',
-#    'prot_level_right',
+    # 'fac_protection_level',
+    # 'prot_level_separation_left',
+    # 'prot_level_separation_right',
+    # 'prot_level_buffer_left',
+    # 'prot_level_buffer_right',
+    # 'prot_level_left',
+    # 'prot_level_right',
     'base_index',
     'fac_1',
     'fac_2',
@@ -305,7 +306,7 @@ retained_attributes_list = [
     'data_malus'
 ]
 
-#missing data values and how much they wight for a data (in)completeness number
+# missing data values and how much they wight for a data (in)completeness number
 data_incompleteness_dict = {
     'width': 25,
     'surface': 30,

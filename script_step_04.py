@@ -1,25 +1,18 @@
 import imp
-import math
 import time
 
-import qgis.processing as processing
-from qgis import *
-from qgis.core import *
-from qgis.PyQt.QtCore import *
+from qgis.core import NULL, edit
 
+import helper_functions
+import script_step_05
 import vars_settings
 
 imp.reload(vars_settings)
-import helper_functions
-
 imp.reload(helper_functions)
-
-import script_step_05
-
 imp.reload(script_step_05)
 
 
-def function_01(
+def function_40(
     feature,
     way_type,
     side,
@@ -48,10 +41,10 @@ def function_01(
                 proc_oneway = vars_settings.default_oneway_cycle_lane
             else:
                 proc_oneway = 'no'
-        if oneway_bicycle in oneway_value_list: #usually not the case on cycle ways, but possible: overwrite oneway value with oneway:bicycle
+        if oneway_bicycle in oneway_value_list:  # usually not the case on cycle ways, but possible: overwrite oneway value with oneway:bicycle
             proc_oneway = oneway_bicycle
     if way_type == 'shared bus lane':
-        proc_oneway = 'yes' #shared bus lanes are represented by own geometry for the lane, and lanes are for oneway use only (usually)
+        proc_oneway = 'yes'  # shared bus lanes are represented by own geometry for the lane, and lanes are for oneway use only (usually)
     if way_type in ['shared road', 'shared traffic lane', 'bicycle road', 'track or service']:
         if not oneway_bicycle or oneway == oneway_bicycle:
             if oneway in oneway_value_list:
@@ -71,7 +64,8 @@ def function_01(
     layer.changeAttributeValue(feature.id(), id_proc_oneway, proc_oneway)
     return proc_oneway, oneway
 
-def function_02(
+
+def function_41(
     way_type,
     feature,
     proc_oneway,
@@ -86,8 +80,8 @@ def function_02(
 
     proc_width = NULL
     if way_type in ['cycle path', 'cycle track', 'shared path', 'shared footway', 'crossing', 'link', 'cycle lane (advisory)', 'cycle lane (exclusive)', 'cycle lane (protected)', 'cycle lane (central)']:
-        #width for cycle lanes and sidewalks have already been derived from original tags when calculating way offsets
-        proc_width = helper_functions.getNumber(feature.attribute('width'))
+        # width for cycle lanes and sidewalks have already been derived from original tags when calculating way offsets
+        proc_width = helper_functions.cast_to_float(feature.attribute('width'))
         if not proc_width:
             if way_type in ['cycle path', 'shared path', 'cycle lane (protected)']:
                 proc_width = vars_settings.default_highway_width_dict['path']
@@ -96,15 +90,15 @@ def function_02(
             else:
                 proc_width = vars_settings.default_highway_width_dict['cycleway']
             if proc_width and proc_oneway == 'no':
-                proc_width *= 1.6 #default values are for oneways - if the way isn't a oneway, widen the default
+                proc_width *= 1.6  # default values are for oneways - if the way isn't a oneway, widen the default
             data_missing = helper_functions.addDelimitedValue(data_missing, 'width')
     if way_type == 'segregated path':
         highway = feature.attribute('highway')
         if highway == 'path':
-            proc_width = helper_functions.getNumber(feature.attribute('cycleway:width'))
+            proc_width = helper_functions.cast_to_float(feature.attribute('cycleway:width'))
             if not proc_width:
-                width = helper_functions.getNumber(feature.attribute('width'))
-                footway_width = helper_functions.getNumber(feature.attribute('footway:width'))
+                width = helper_functions.cast_to_float(feature.attribute('width'))
+                footway_width = helper_functions.cast_to_float(feature.attribute('footway:width'))
                 if width:
                     if footway_width:
                         proc_width = width - footway_width
@@ -112,26 +106,26 @@ def function_02(
                         proc_width = width / 2
                 data_missing = helper_functions.addDelimitedValue(data_missing, 'width')
         else:
-            proc_width = helper_functions.getNumber(feature.attribute('width'))
+            proc_width = helper_functions.cast_to_float(feature.attribute('width'))
         if not proc_width:
             proc_width = vars_settings.default_highway_width_dict['path']
             if proc_oneway == 'no':
                 proc_width *= 1.6
             data_missing = helper_functions.addDelimitedValue(data_missing, 'width')
     if way_type in ['shared road', 'shared traffic lane', 'shared bus lane', 'bicycle road', 'track or service']:
-        #on shared traffic or bus lanes, use a width value based on lane width, not on carriageway width
+        # on shared traffic or bus lanes, use a width value based on lane width, not on carriageway width
         if way_type in ['shared traffic lane', 'shared bus lane']:
             width_lanes = feature.attribute('width:lanes')
             width_lanes_forward = feature.attribute('width:lanes:forward')
             width_lanes_backward = feature.attribute('width:lanes:backward')
             if ('yes' in proc_oneway or way_type != 'shared bus lane') and width_lanes and '|' in width_lanes:
-                #TODO: at the moment, forward/backward can only be processed for shared bus lanes, since there are no separate geometries for shared road lanes
-                #TODO: for bus lanes, currently only assuming that the right lane is the bus lane. Instead derive lane position from "psv:lanes" or "bus:lanes", if specified
-                proc_width = helper_functions.getNumber(width_lanes[width_lanes.rfind('|') + 1:])
-            elif (way_type == 'shared bus lane' and not 'yes' in proc_oneway) and side == 'right' and width_lanes_forward and '|' in width_lanes_forward:
-                proc_width = helper_functions.getNumber(width_lanes_forward[width_lanes_forward.rfind('|') + 1:])
-            elif (way_type == 'shared bus lane' and not 'yes' in proc_oneway) and side == 'left' and width_lanes_backward and '|' in width_lanes_backward:
-                proc_width = helper_functions.getNumber(width_lanes_backward[width_lanes_backward.rfind('|') + 1:])
+                # TODO: at the moment, forward/backward can only be processed for shared bus lanes, since there are no separate geometries for shared road lanes
+                # TODO: for bus lanes, currently only assuming that the right lane is the bus lane. Instead derive lane position from "psv:lanes" or "bus:lanes", if specified
+                proc_width = helper_functions.cast_to_float(width_lanes[width_lanes.rfind('|') + 1:])
+            elif (way_type == 'shared bus lane' and 'yes' not in proc_oneway) and side == 'right' and width_lanes_forward and '|' in width_lanes_forward:
+                proc_width = helper_functions.cast_to_float(width_lanes_forward[width_lanes_forward.rfind('|') + 1:])
+            elif (way_type == 'shared bus lane' and 'yes' not in proc_oneway) and side == 'left' and width_lanes_backward and '|' in width_lanes_backward:
+                proc_width = helper_functions.cast_to_float(width_lanes_backward[width_lanes_backward.rfind('|') + 1:])
             else:
                 if way_type == 'shared bus lane':
                     proc_width = vars_settings.default_width_bus_lane
@@ -140,32 +134,32 @@ def function_02(
                     data_missing = helper_functions.addDelimitedValue(data_missing, 'width:lanes')
 
         if not proc_width:
-            #effective width (usable width of a road for flowing traffic) can be mapped explicitly
-            proc_width = helper_functions.getNumber(feature.attribute('width:effective'))
-            #try to use lane count and a default lane width if no width and no width:effective is mapped
-            #(usually, this means, there are lane markings (see above), but sometimes "lane" tag is misused or "lane_markings" isn't mapped)
+            # effective width (usable width of a road for flowing traffic) can be mapped explicitly
+            proc_width = helper_functions.cast_to_float(feature.attribute('width:effective'))
+            # try to use lane count and a default lane width if no width and no width:effective is mapped
+            # (usually, this means, there are lane markings (see above), but sometimes "lane" tag is misused or "lane_markings" isn't mapped)
             if not proc_width:
-                width = helper_functions.getNumber(feature.attribute('width'))
+                width = helper_functions.cast_to_float(feature.attribute('width'))
                 if not width:
-                    lanes = helper_functions.getNumber(feature.attribute('lanes'))
+                    lanes = helper_functions.cast_to_float(feature.attribute('lanes'))
                     if lanes:
                         proc_width = lanes * vars_settings.default_width_traffic_lane
-                        #TODO: take width:lanes into account, if mapped
-            #derive effective road width from road width, parking and cycle lane information
-            #subtract parking and cycle lane width from carriageway width to get effective width (usable width for driving)
+                        # TODO: take width:lanes into account, if mapped
+            # derive effective road width from road width, parking and cycle lane information
+            # subtract parking and cycle lane width from carriageway width to get effective width (usable width for driving)
             if not proc_width:
-                #derive parking lane width
+                # derive parking lane width
                 parking_left = feature.attribute('parking:left')
                 parking_left_orientation = feature.attribute('parking:left:orientation')
-                parking_left_width = helper_functions.getNumber(feature.attribute('parking:left:width'))
+                parking_left_width = helper_functions.cast_to_float(feature.attribute('parking:left:width'))
                 parking_right = feature.attribute('parking:right')
                 parking_right_orientation = feature.attribute('parking:right:orientation')
-                parking_right_width = helper_functions.getNumber(feature.attribute('parking:right:width'))
+                parking_right_width = helper_functions.cast_to_float(feature.attribute('parking:right:width'))
                 parking_both = feature.attribute('parking:both')
                 parking_both_orientation = feature.attribute('parking:both:orientation')
-                parking_both_width = helper_functions.getNumber(feature.attribute('parking:both:width'))
+                parking_both_width = helper_functions.cast_to_float(feature.attribute('parking:both:width'))
 
-                #split parking:both-keys into left and right values
+                # split parking:both-keys into left and right values
                 if parking_both:
                     if not parking_right:
                         parking_right = parking_both
@@ -208,7 +202,7 @@ def function_02(
                 if not parking_left_width:
                     parking_left_width = 0
 
-                #derive cycle lane width
+                # derive cycle lane width
                 cycleway = feature.attribute('cycleway')
                 cycleway_left = feature.attribute('cycleway:left')
                 cycleway_right = feature.attribute('cycleway:right')
@@ -223,7 +217,7 @@ def function_02(
                 cycleway_left_buffer_left = NULL
                 cycleway_left_buffer_right = NULL
 
-                #split cycleway:both-keys into left and right values
+                # split cycleway:both-keys into left and right values
                 if cycleway:
                     if not cycleway_right:
                         cycleway_right = cycleway
@@ -246,7 +240,7 @@ def function_02(
                         if not cycleway_left_width:
                             cycleway_left_width = cycleway_both_width
 
-                    #cycleway buffers must also be subtracted from the road width
+                    # cycleway buffers must also be subtracted from the road width
                     cycleway_buffer = feature.attribute('cycleway:buffer')
                     cycleway_left_buffer = feature.attribute('cycleway:left:buffer')
                     cycleway_right_buffer = feature.attribute('cycleway:right:buffer')
@@ -303,35 +297,35 @@ def function_02(
                 if not cycleway_left_buffer_right or cycleway_left_buffer_right == 'no' or cycleway_left_buffer_right == 'none':
                     cycleway_left_buffer_right = 0
 
-                #carriageway width: use default road width if no width is specified
+                # carriageway width: use default road width if no width is specified
                 if not width:
                     highway = feature.attribute('highway')
                     width = vars_settings.default_highway_width_dict[highway]
 
-                    #assume that oneway roads are narrower
+                    # assume that oneway roads are narrower
                     if 'yes' in proc_oneway:
                         width = round(width / 1.6, 1)
                     data_missing = helper_functions.addDelimitedValue(data_missing, 'width')
 
-                buffer = helper_functions.getNumber(cycleway_right_buffer_left) + helper_functions.getNumber(cycleway_right_buffer_right) + helper_functions.getNumber(cycleway_left_buffer_left) + helper_functions.getNumber(cycleway_left_buffer_right)
-                proc_width = width - helper_functions.getNumber(cycleway_right_width) - helper_functions.getNumber(cycleway_left_width) - buffer
+                buffer = helper_functions.cast_to_float(cycleway_right_buffer_left) + helper_functions.cast_to_float(cycleway_right_buffer_right) + helper_functions.cast_to_float(cycleway_left_buffer_left) + helper_functions.cast_to_float(cycleway_left_buffer_right)
+                proc_width = width - helper_functions.cast_to_float(cycleway_right_width) - helper_functions.cast_to_float(cycleway_left_width) - buffer
 
                 if parking_right or parking_left:
-                    proc_width = proc_width - helper_functions.getNumber(parking_right_width) - helper_functions.getNumber(parking_left_width)
-                #if parking isn't mapped on regular shared roads, reduce width if it's above a threshold (assuming there might be unmapped parking)
+                    proc_width = proc_width - helper_functions.cast_to_float(parking_right_width) - helper_functions.cast_to_float(parking_left_width)
+                # if parking isn't mapped on regular shared roads, reduce width if it's above a threshold (assuming there might be unmapped parking)
                 else:
                     if way_type == 'shared road':
-                        if not 'yes' in proc_oneway:
-                            #assume that 5.5m of a regular unmarked carriageway are used for driving, other space for parking...
+                        if 'yes' not in proc_oneway:
+                            # assume that 5.5m of a regular unmarked carriageway are used for driving, other space for parking...
                             proc_width = min(proc_width, 5.5)
                         else:
-                            #resp. 4m in oneway roads
+                            # resp. 4m in oneway roads
                             proc_width = min(proc_width, 4)
-                        #mark "parking" as a missing value if there are no parking tags on regular roads
-                        #TODO: Differentiate between inner and outer urban areas/city limits - out of cities, there is usually no need to map street parking
+                        # mark "parking" as a missing value if there are no parking tags on regular roads
+                        # TODO: Differentiate between inner and outer urban areas/city limits - out of cities, there is usually no need to map street parking
                         data_missing = helper_functions.addDelimitedValue(data_missing, 'parking')
 
-                #if width was derived from a default, the result should not be less than the default width of a motorcar lane
+                # if width was derived from a default, the result should not be less than the default width of a motorcar lane
                 if proc_width < vars_settings.default_width_traffic_lane and 'width' in data_missing:
                     proc_width = vars_settings.default_width_traffic_lane
     if not proc_width:
@@ -339,7 +333,8 @@ def function_02(
 
     return proc_width
 
-def function_03(
+
+def function_42(
     feature,
     way_type,
     data_missing,
@@ -348,17 +343,17 @@ def function_03(
     Derive surface and smoothness.
     """
 
-    proc_surface = NULL
+    proc_surface = None
     proc_smoothness = NULL
 
-    #in rare cases, surface or smoothness is explicitly tagged for bicycles - check that first
-    surface_bicycle = feature.attribute('surface:bicycle')
+    # in rare cases, surface or smoothness is explicitly tagged for bicycles - check that first
+    surface_bicycle: str = feature.attribute('surface:bicycle')
     smoothness_bicycle = feature.attribute('smoothness:bicycle')
     if surface_bicycle:
         if surface_bicycle in vars_settings.surface_factor_dict:
             proc_surface = surface_bicycle
         elif ';' in surface_bicycle:
-            proc_surface = helper_functions.getWeakestSurfaceValue(helper_functions.getDelimitedValues(surface_bicycle, ';', 'string'))
+            proc_surface = helper_functions.get_weakest_surface_value(surface_bicycle.split(';'))
     if smoothness_bicycle and smoothness_bicycle in vars_settings.smoothness_factor_dict:
         proc_smoothness = smoothness_bicycle
 
@@ -386,7 +381,7 @@ def function_03(
                         data_missing = helper_functions.addDelimitedValue(data_missing, 'smoothness')
 
         else:
-            #surface and smoothness for cycle lanes and sidewalks have already been derived from original tags when calculating way offsets
+            # surface and smoothness for cycle lanes and sidewalks have already been derived from original tags when calculating way offsets
             proc_surface = feature.attribute('surface')
             if not proc_surface:
                 if way_type in ['cycle lane (advisory)', 'cycle lane (exclusive)', 'cycle lane (protected)', 'cycle lane (central)']:
@@ -411,9 +406,9 @@ def function_03(
                 if not proc_smoothness:
                     data_missing = helper_functions.addDelimitedValue(data_missing, 'smoothness')
 
-    #if more than one surface value is tagged (delimited by a semicolon), use the weakest one
+    # if more than one surface value is tagged (delimited by a semicolon), use the weakest one
     if ';' in proc_surface:
-        proc_surface = helper_functions.getWeakestSurfaceValue(helper_functions.getDelimitedValues(proc_surface, ';', 'string'))
+        proc_surface = helper_functions.get_weakest_surface_value(proc_surface.split(';'))
     if proc_surface not in vars_settings.surface_factor_dict:
         proc_surface = NULL
     if proc_smoothness not in vars_settings.smoothness_factor_dict:
@@ -421,7 +416,7 @@ def function_03(
     return proc_surface, proc_smoothness
 
 
-def function_04(
+def function_43(
     way_type,
     feature,
     is_sidepath,
@@ -442,15 +437,15 @@ def function_04(
         traffic_mode_left = 'motor_vehicle'
         traffic_mode_right = 'motor_vehicle'
     else:
-        #derive traffic modes for both sides of the way (default: motor vehicles on the left and foot on the right on cycleways)
+        # derive traffic modes for both sides of the way (default: motor vehicles on the left and foot on the right on cycleways)
         traffic_mode_left = feature.attribute('traffic_mode:left')
         traffic_mode_right = feature.attribute('traffic_mode:right')
         traffic_mode_both = feature.attribute('traffic_mode:both')
-        #if there are parking lanes, assume they are next to the cycle way if no traffic modes are specified
+        # if there are parking lanes, assume they are next to the cycle way if no traffic modes are specified
         parking_right = feature.attribute('parking:right')
         parking_left = feature.attribute('parking:left')
         parking_both = feature.attribute('parking:both')
-        #TODO: check for existence of sidewalks to derive whether traffic mode on the right is foot or no traffic for default
+        # TODO: check for existence of sidewalks to derive whether traffic mode on the right is foot or no traffic for default
         if parking_both:
             if not parking_left:
                 parking_left = parking_both
@@ -493,7 +488,7 @@ def function_04(
             if not separation_right:
                 separation_right = separation_both
         if separation:
-            #in case of separation, a key without side suffix only refers to the side with vehicle traffic
+            # in case of separation, a key without side suffix only refers to the side with vehicle traffic
             if vars_settings.right_hand_traffic:
                 if traffic_mode_left in ['motor_vehicle', 'psv', 'parking']:
                     if not separation_left:
@@ -513,17 +508,17 @@ def function_04(
         if not separation_right:
             separation_right = 'no'
 
-        buffer_left = helper_functions.getNumber(feature.attribute('buffer:left'))
-        buffer_right = helper_functions.getNumber(feature.attribute('buffer:right'))
-        buffer_both = helper_functions.getNumber(feature.attribute('buffer:both'))
-        buffer = helper_functions.getNumber(feature.attribute('buffer'))
+        buffer_left = helper_functions.cast_to_float(feature.attribute('buffer:left'))
+        buffer_right = helper_functions.cast_to_float(feature.attribute('buffer:right'))
+        buffer_both = helper_functions.cast_to_float(feature.attribute('buffer:both'))
+        buffer = helper_functions.cast_to_float(feature.attribute('buffer'))
         if buffer_both:
             if not buffer_left:
                 buffer_left = buffer_both
             if not buffer_right:
                 buffer_right = buffer_both
         if buffer:
-            #in case of buffer, a key without side suffix only refers to the side with vehicle traffic
+            # in case of buffer, a key without side suffix only refers to the side with vehicle traffic
             if vars_settings.right_hand_traffic:
                 if traffic_mode_left in ['motor_vehicle', 'psv', 'parking']:
                     if not buffer_left:
@@ -541,7 +536,8 @@ def function_04(
 
     return traffic_mode_left, traffic_mode_right, separation_left, separation_right, buffer_left, buffer_right
 
-def function_05(
+
+def function_44(
     feature,
     way_type,
     proc_oneway,
@@ -558,23 +554,23 @@ def function_05(
     cycleway_left = feature.attribute('cycleway:left')
     cycleway_right = feature.attribute('cycleway:right')
     bicycle = feature.attribute('bicycle')
-    traffic_sign = feature.attribute('traffic_sign')
+    traffic_sign: str = feature.attribute('traffic_sign')
     proc_traffic_sign = traffic_sign
 
     if way_type in ['bicycle road', 'shared road', 'shared traffic lane', 'track or service']:
-        #if cycle lanes are present, mark center line as "use sidepath"
+        # if cycle lanes are present, mark center line as "use sidepath"
         if cycleway in ['lane', 'share_busway'] or cycleway_both in ['lane', 'share_busway'] or ('yes' in proc_oneway and cycleway_right in ['lane', 'share_busway']):
             proc_mandatory = 'use_sidepath'
-        #if tracks are present, mark center line as "optional sidepath" - as well as if "bicycle" is explicitly tagged as "optional_sidepath"
+        # if tracks are present, mark center line as "optional sidepath" - as well as if "bicycle" is explicitly tagged as "optional_sidepath"
         elif cycleway == 'track' or cycleway_both == 'track' or ('yes' in proc_oneway and cycleway_right == 'track'):
             proc_mandatory = 'optional_sidepath'
         if bicycle in ['use_sidepath', 'optional_sidepath']:
             proc_mandatory = bicycle
     else:
         if is_sidepath == 'yes':
-            #derive mandatory use from the presence of traffic signs
+            # derive mandatory use from the presence of traffic signs
             if traffic_sign:
-                traffic_sign = helper_functions.getDelimitedValues(traffic_sign.replace(',', ';'), ';', 'string')
+                traffic_sign = traffic_sign.split(',;')
                 for sign in traffic_sign:
                     for mandatory_sign in vars_settings.not_mandatory_traffic_sign_list:
                         if mandatory_sign in sign:
@@ -619,6 +615,13 @@ def step_04(
     id_data_bonus,
     id_data_malus,
     id_data_incompleteness,
+    id_fac_protection_level,
+    id_prot_level_separation_left,
+    id_prot_level_separation_right,
+    id_prot_level_buffer_left,
+    id_prot_level_buffer_right,
+    id_prot_level_left,
+    id_prot_level_right,
 ):
     """
     4: Derive relevant attributes for index and factors
@@ -632,7 +635,7 @@ def step_04(
             is_sidepath = feature.attribute('proc_sidepath')
             data_missing = ''
 
-            proc_oneway, oneway = function_01(
+            proc_oneway, oneway = function_40(
                 feature,
                 way_type,
                 side,
@@ -640,7 +643,7 @@ def step_04(
                 id_proc_oneway,
             )
 
-            proc_width = function_02(
+            proc_width = function_41(
                 way_type,
                 feature,
                 proc_oneway,
@@ -651,7 +654,7 @@ def step_04(
 
             layer.changeAttributeValue(feature.id(), id_proc_width, proc_width)
 
-            proc_surface, proc_smoothness = function_03(
+            proc_surface, proc_smoothness = function_42(
                 feature,
                 way_type,
                 data_missing,
@@ -660,7 +663,7 @@ def step_04(
             layer.changeAttributeValue(feature.id(), id_proc_surface, proc_surface)
             layer.changeAttributeValue(feature.id(), id_proc_smoothness, proc_smoothness)
 
-            traffic_mode_left, traffic_mode_right, separation_left, separation_right, buffer_left, buffer_right = function_04(
+            traffic_mode_left, traffic_mode_right, separation_left, separation_right, buffer_left, buffer_right = function_43(
                 way_type,
                 feature,
                 is_sidepath,
@@ -674,7 +677,7 @@ def step_04(
             layer.changeAttributeValue(feature.id(), id_proc_buffer_left, buffer_left)
             layer.changeAttributeValue(feature.id(), id_proc_buffer_right, buffer_right)
 
-            proc_mandatory, proc_traffic_sign, cycleway, cycleway_both, cycleway_left, cycleway_right, bicycle = function_05(
+            proc_mandatory, proc_traffic_sign, cycleway, cycleway_both, cycleway_left, cycleway_right, bicycle = function_44(
                 feature,
                 way_type,
                 proc_oneway,
@@ -717,6 +720,15 @@ def step_04(
                 buffer_left,
                 buffer_right,
                 bicycle,
+                id_fac_protection_level,
+                id_prot_level_separation_left,
+                id_prot_level_separation_right,
+                id_prot_level_buffer_left,
+                id_prot_level_buffer_right,
+                id_prot_level_left,
+                id_prot_level_right,
+                separation_right,
+                separation_left,
             )
 
         layer.updateFields()

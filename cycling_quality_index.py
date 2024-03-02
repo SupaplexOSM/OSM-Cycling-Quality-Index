@@ -1,12 +1,12 @@
-# ------------------------------------------------------------------------- #
-#   Cycling Quality Index                                                   #
-#   --------------------------------------------------                      #
-#   Script for processing OSM data to analyse the cycling quality of ways.  #
-#   Download OSM data input from https://overpass-turbo.eu/s/1G3t,          #
-#   save it at data/way_import.geojson and run the script.                  #
-#                                                                           #
-#   > version/date: 2024-03-02                                              #
-# ------------------------------------------------------------------------- #
+"""
+   Cycling Quality Index
+   --------------------------------------------------
+   Script for processing OSM data to analyse the cycling quality of ways.
+   Download OSM data input from https://overpass-turbo.eu/s/1G3t,
+   save it at data/way_import.geojson and run the script.
+
+   version/date: 2024-03-02
+"""
 
 import imp
 import imp
