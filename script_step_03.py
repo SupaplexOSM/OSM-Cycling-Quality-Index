@@ -23,7 +23,7 @@ def step_03(
         for feature in layer.getFeatures():
 
             # exclude segments with no public bicycle access
-            if helper_functions.getAccess(feature, 'bicycle') and helper_functions.getAccess(feature, 'bicycle') not in ['yes', 'permissive', 'designated', 'use_sidepath', 'optional_sidepath', 'discouraged']:
+            if helper_functions.get_access(feature, 'bicycle') and helper_functions.get_access(feature, 'bicycle') not in ['yes', 'permissive', 'designated', 'use_sidepath', 'optional_sidepath', 'discouraged']:
                 layer.deleteFeature(feature.id())
 
             # exclude informal paths without explicit bicycle access
@@ -74,7 +74,7 @@ def step_03(
                     if foot in ['yes', 'designated', 'permissive']:
                         way_type = 'shared path'
                     else:
-                        separation_foot = helper_functions.deriveSeparation(feature, 'foot')
+                        separation_foot = helper_functions.derive_separation(feature, 'foot')
                         if separation_foot == 'no':
                             way_type = 'segregated path'
                         else:
@@ -88,7 +88,7 @@ def step_03(
                                         print(feature.attribute('id'))
 
                             elif is_sidepath == 'yes':
-                                separation_motor_vehicle = helper_functions.deriveSeparation(feature, 'motor_vehicle')
+                                separation_motor_vehicle = helper_functions.derive_separation(feature, 'motor_vehicle')
                                 if separation_motor_vehicle not in [NULL, 'no', 'none']:
                                     if 'kerb' in separation_motor_vehicle or 'tree_row' in separation_motor_vehicle:
                                         way_type = 'cycle track'
@@ -131,7 +131,7 @@ def step_03(
                                 if cycleway_lanes and 'no|lane|no' in cycleway_lanes:
                                     way_type = 'cycle lane (central)'
                                 else:
-                                    separation_motor_vehicle = helper_functions.deriveSeparation(feature, 'motor_vehicle')
+                                    separation_motor_vehicle = helper_functions.derive_separation(feature, 'motor_vehicle')
                                     if separation_motor_vehicle not in [NULL, 'no', 'none']:
                                         way_type = 'cycle lane (protected)'
                                     else:
@@ -166,11 +166,11 @@ def step_03(
                                     elif cycleway_segregated == 'no' or cycleway_both_segregated == 'no' or (side == 'right' and cycleway_right_segregated == 'no') or (side == 'left' and cycleway_left_segregated == 'no'):
                                         way_type = 'shared path'
                                     else:
-                                        separation_foot = helper_functions.deriveSeparation(feature, 'foot')
+                                        separation_foot = helper_functions.derive_separation(feature, 'foot')
                                         if separation_foot == 'no':
                                             way_type = 'segregated path'
                                         else:
-                                            separation_motor_vehicle = helper_functions.deriveSeparation(feature, 'motor_vehicle')
+                                            separation_motor_vehicle = helper_functions.derive_separation(feature, 'motor_vehicle')
                                             if separation_motor_vehicle not in [NULL, 'no', 'none']:
                                                 if 'kerb' in separation_motor_vehicle or 'tree_row' in separation_motor_vehicle:
                                                     way_type = 'cycle track'

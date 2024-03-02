@@ -1,12 +1,16 @@
 import imp
 import time
 from os.path import exists
+from typing import TYPE_CHECKING
 
-import qgis.processing as processing
-from qgis.core import (
+if TYPE_CHECKING:
+    from pathlib import Path
+
+import qgis.processing as processing  # type: ignore
+from qgis.core import (  # type: ignore
     QgsCoordinateReferenceSystem, QgsField, QgsProject, QgsVectorLayer, edit
 )
-from qgis.PyQt.QtCore import QVariant
+from qgis.PyQt.QtCore import QVariant  # type: ignore
 
 import helper_functions
 import script_step_01
@@ -23,12 +27,12 @@ imp.reload(script_step_03)
 imp.reload(script_step_04)
 
 
-def main(dir_input, dir_output):
+def main(dir_input: Path, dir_output: Path) -> None:
     print(time.strftime('%H:%M:%S', time.localtime()), 'Start processing:')
 
     print(time.strftime('%H:%M:%S', time.localtime()), 'Read data...')
     if not exists(dir_input):
-        print(time.strftime('%H:%M:%S', time.localtime()), '[!] Error: No valid input file at "' + dir_input + '".')
+        print(time.strftime('%H:%M:%S', time.localtime()), f'[!] Error: No valid input file at "{dir_input}".')
     else:
         layer_way_input = QgsVectorLayer(f"{dir_input}|geometrytype=LineString", 'way input', 'ogr')
 

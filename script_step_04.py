@@ -91,7 +91,7 @@ def function_41(
                 proc_width = vars_settings.default_highway_width_dict['cycleway']
             if proc_width and proc_oneway == 'no':
                 proc_width *= 1.6  # default values are for oneways - if the way isn't a oneway, widen the default
-            data_missing = helper_functions.addDelimitedValue(data_missing, 'width')
+            data_missing = helper_functions.add_delimited_value(data_missing, 'width')
     if way_type == 'segregated path':
         highway = feature.attribute('highway')
         if highway == 'path':
@@ -104,14 +104,14 @@ def function_41(
                         proc_width = width - footway_width
                     else:
                         proc_width = width / 2
-                data_missing = helper_functions.addDelimitedValue(data_missing, 'width')
+                data_missing = helper_functions.add_delimited_value(data_missing, 'width')
         else:
             proc_width = helper_functions.cast_to_float(feature.attribute('width'))
         if not proc_width:
             proc_width = vars_settings.default_highway_width_dict['path']
             if proc_oneway == 'no':
                 proc_width *= 1.6
-            data_missing = helper_functions.addDelimitedValue(data_missing, 'width')
+            data_missing = helper_functions.add_delimited_value(data_missing, 'width')
     if way_type in ['shared road', 'shared traffic lane', 'shared bus lane', 'bicycle road', 'track or service']:
         # on shared traffic or bus lanes, use a width value based on lane width, not on carriageway width
         if way_type in ['shared traffic lane', 'shared bus lane']:
@@ -131,7 +131,7 @@ def function_41(
                     proc_width = vars_settings.default_width_bus_lane
                 else:
                     proc_width = vars_settings.default_width_traffic_lane
-                    data_missing = helper_functions.addDelimitedValue(data_missing, 'width:lanes')
+                    data_missing = helper_functions.add_delimited_value(data_missing, 'width:lanes')
 
         if not proc_width:
             # effective width (usable width of a road for flowing traffic) can be mapped explicitly
@@ -305,7 +305,7 @@ def function_41(
                     # assume that oneway roads are narrower
                     if 'yes' in proc_oneway:
                         width = round(width / 1.6, 1)
-                    data_missing = helper_functions.addDelimitedValue(data_missing, 'width')
+                    data_missing = helper_functions.add_delimited_value(data_missing, 'width')
 
                 buffer = helper_functions.cast_to_float(cycleway_right_buffer_left) + helper_functions.cast_to_float(cycleway_right_buffer_right) + helper_functions.cast_to_float(cycleway_left_buffer_left) + helper_functions.cast_to_float(cycleway_left_buffer_right)
                 proc_width = width - helper_functions.cast_to_float(cycleway_right_width) - helper_functions.cast_to_float(cycleway_left_width) - buffer
@@ -323,7 +323,7 @@ def function_41(
                             proc_width = min(proc_width, 4)
                         # mark "parking" as a missing value if there are no parking tags on regular roads
                         # TODO: Differentiate between inner and outer urban areas/city limits - out of cities, there is usually no need to map street parking
-                        data_missing = helper_functions.addDelimitedValue(data_missing, 'parking')
+                        data_missing = helper_functions.add_delimited_value(data_missing, 'parking')
 
                 # if width was derived from a default, the result should not be less than the default width of a motorcar lane
                 if proc_width < vars_settings.default_width_traffic_lane and 'width' in data_missing:
@@ -370,7 +370,7 @@ def function_42(
                         proc_surface = vars_settings.default_highway_surface_dict[highway]
                     else:
                         proc_surface = vars_settings.default_highway_surface_dict['path']
-                    data_missing = helper_functions.addDelimitedValue(data_missing, 'surface')
+                    data_missing = helper_functions.add_delimited_value(data_missing, 'surface')
             if not proc_smoothness:
                 proc_smoothness = feature.attribute('cycleway:smoothness')
                 if not proc_smoothness:
@@ -378,7 +378,7 @@ def function_42(
                     if smoothness:
                         proc_smoothness = smoothness
                     else:
-                        data_missing = helper_functions.addDelimitedValue(data_missing, 'smoothness')
+                        data_missing = helper_functions.add_delimited_value(data_missing, 'smoothness')
 
         else:
             # surface and smoothness for cycle lanes and sidewalks have already been derived from original tags when calculating way offsets
@@ -400,11 +400,11 @@ def function_42(
                         proc_surface = vars_settings.default_highway_surface_dict[highway]
                     else:
                         proc_surface = vars_settings.default_highway_surface_dict['path']
-                data_missing = helper_functions.addDelimitedValue(data_missing, 'surface')
+                data_missing = helper_functions.add_delimited_value(data_missing, 'surface')
             if not proc_smoothness:
                 proc_smoothness = feature.attribute('smoothness')
                 if not proc_smoothness:
-                    data_missing = helper_functions.addDelimitedValue(data_missing, 'smoothness')
+                    data_missing = helper_functions.add_delimited_value(data_missing, 'smoothness')
 
     # if more than one surface value is tagged (delimited by a semicolon), use the weakest one
     if ';' in proc_surface:
@@ -622,7 +622,7 @@ def step_04(
     id_prot_level_buffer_right,
     id_prot_level_left,
     id_prot_level_right,
-):
+) -> None:
     """
     4: Derive relevant attributes for index and factors
     """

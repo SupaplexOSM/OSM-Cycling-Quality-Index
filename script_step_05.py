@@ -30,10 +30,10 @@ def function_50(
 
     # on roads with restricted motor vehicle access, overwrite the base index with a access-specific base index
     if way_type in ['bicycle road', 'shared road', 'shared traffic lane', 'track or service']:
-        motor_vehicle_access = helper_functions.getAccess(feature, 'motor_vehicle')
+        motor_vehicle_access = helper_functions.get_access(feature, 'motor_vehicle')
         if motor_vehicle_access in vars_settings.motor_vehicle_access_index_dict:
             base_index = vars_settings.motor_vehicle_access_index_dict[motor_vehicle_access]
-            data_bonus = helper_functions.addDelimitedValue(data_bonus, 'motor vehicle restricted')
+            data_bonus = helper_functions.add_delimited_value(data_bonus, 'motor vehicle restricted')
     layer.changeAttributeValue(feature.id(), id_base_index, base_index)
 
     return motor_vehicle_access, base_index
@@ -57,7 +57,7 @@ def function_51(
     calc_width = NULL
     minimum_factor = 0
     # for dedicated ways for cycling
-    if way_type not in ['bicycle road', 'shared road', 'shared traffic lane', 'shared bus lane', 'track or service'] or helper_functions.getAccess(feature, 'motor_vehicle') == 'no':
+    if way_type not in ['bicycle road', 'shared road', 'shared traffic lane', 'shared bus lane', 'track or service'] or helper_functions.get_access(feature, 'motor_vehicle') == 'no':
         calc_width = proc_width
         # calculated width depends on the width/space per driving direction
         if calc_width and 'yes' not in proc_oneway:
@@ -104,9 +104,9 @@ def function_51(
     layer.changeAttributeValue(feature.id(), id_fac_width, fac_width)
 
     if fac_width > 1:
-        data_bonus = helper_functions.addDelimitedValue(data_bonus, 'wide width')
+        data_bonus = helper_functions.add_delimited_value(data_bonus, 'wide width')
     if fac_width and fac_width <= 0.5:
-        data_malus = helper_functions.addDelimitedValue(data_malus, 'narrow width')
+        data_malus = helper_functions.add_delimited_value(data_malus, 'narrow width')
 
     return fac_width
 
@@ -133,9 +133,9 @@ def function_52(
     layer.changeAttributeValue(feature.id(), id_fac_surface, fac_surface)
 
     if fac_surface > 1:
-        data_bonus = helper_functions.addDelimitedValue(data_bonus, 'excellent surface')
+        data_bonus = helper_functions.add_delimited_value(data_bonus, 'excellent surface')
     if fac_surface and fac_surface <= 0.5:
-        data_malus = helper_functions.addDelimitedValue(data_malus, 'bad surface')
+        data_malus = helper_functions.add_delimited_value(data_malus, 'bad surface')
 
     return fac_surface
 
@@ -306,11 +306,11 @@ def function_55(
 
         if weight >= 0.5:
             if fac_2 > 1:
-                data_bonus = helper_functions.addDelimitedValue(data_bonus, 'slow traffic')
+                data_bonus = helper_functions.add_delimited_value(data_bonus, 'slow traffic')
             if fac_highway <= 0.7:
-                data_malus = helper_functions.addDelimitedValue(data_malus, 'along a major road')
+                data_malus = helper_functions.add_delimited_value(data_malus, 'along a major road')
             if fac_maxspeed <= 0.7:
-                data_malus = helper_functions.addDelimitedValue(data_malus, 'along a road with high speed limits')
+                data_malus = helper_functions.add_delimited_value(data_malus, 'along a road with high speed limits')
 
         # factor 3: separation and buffer
         fac_3 = 1
@@ -323,7 +323,7 @@ def function_55(
         if way_type in ['shared road', 'shared traffic lane']:
             if cycleway == 'shared_lane' or cycleway_both == 'shared_lane' or cycleway_left == 'shared_lane' or cycleway_right == 'shared_lane':
                 fac_4 += 0.1
-                data_bonus = helper_functions.addDelimitedValue(data_bonus, 'shared lane markings')
+                data_bonus = helper_functions.add_delimited_value(data_bonus, 'shared lane markings')
 
         # bonus for surface colour on shared traffic ways
         if 'cycle lane' in way_type or way_type in ['crossing', 'shared bus lane', 'link', 'bicycle road'] or (way_type in ['shared path', 'segregated path'] and is_sidepath == 'yes'):
@@ -333,30 +333,30 @@ def function_55(
                     fac_4 += 0.15  # more bonus for colored crossings
                 else:
                     fac_4 += 0.05
-                data_bonus = helper_functions.addDelimitedValue(data_bonus, 'surface colour')
+                data_bonus = helper_functions.add_delimited_value(data_bonus, 'surface colour')
 
         # bonus for marked or signalled crossings
         if way_type == 'crossing':
             crossing = feature.attribute('crossing')
             if not crossing:
-                data_missing = helper_functions.addDelimitedValue(data_missing, 'crossing')
+                data_missing = helper_functions.add_delimited_value(data_missing, 'crossing')
             crossing_markings = feature.attribute('crossing:markings')
             if not crossing_markings:
-                data_missing = helper_functions.addDelimitedValue(data_missing, 'crossing_markings')
+                data_missing = helper_functions.add_delimited_value(data_missing, 'crossing_markings')
             if crossing in ['traffic_signals']:
                 fac_4 += 0.2
-                data_bonus = helper_functions.addDelimitedValue(data_bonus, 'signalled crossing')
+                data_bonus = helper_functions.add_delimited_value(data_bonus, 'signalled crossing')
             elif crossing in ['marked', 'zebra'] or (crossing_markings and crossing_markings != 'no'):
                 fac_4 += 0.1
-                data_bonus = helper_functions.addDelimitedValue(data_bonus, 'marked crossing')
+                data_bonus = helper_functions.add_delimited_value(data_bonus, 'marked crossing')
 
         # malus for missing street light
         lit = feature.attribute('lit')
         if not lit:
-            data_missing = helper_functions.addDelimitedValue(data_missing, 'lit')
+            data_missing = helper_functions.add_delimited_value(data_missing, 'lit')
         if lit == 'no':
             fac_4 -= 0.1
-            data_malus = helper_functions.addDelimitedValue(data_malus, 'no street lighting')
+            data_malus = helper_functions.add_delimited_value(data_malus, 'no street lighting')
 
         # malus for cycle way along parking without buffer (danger of dooring)
         # TODO: currently no information if parking is parallel parking - for this, a parking orientation lookup on the centerline is needed for separately mapped cycle ways
@@ -370,12 +370,12 @@ def function_55(
             if traffic_mode_left == 'parking' and traffic_mode_right == 'parking':
                 diff = abs(((buffer_left + buffer_right) / 2) - 1) / 5
             fac_4 -= diff
-            data_malus = helper_functions.addDelimitedValue(data_malus, 'insufficient dooring buffer')
+            data_malus = helper_functions.add_delimited_value(data_malus, 'insufficient dooring buffer')
 
         # malus if bicycle is only "permissive"
         if bicycle == 'permissive':
             fac_4 -= 0.2
-            data_malus = helper_functions.addDelimitedValue(data_malus, 'cycling not intended')
+            data_malus = helper_functions.add_delimited_value(data_malus, 'cycling not intended')
 
         layer.changeAttributeValue(feature.id(), id_fac_4, round(fac_4, 2))
 

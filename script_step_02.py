@@ -100,7 +100,7 @@ def step_02(
             'qgis:selectbyexpression',
             {
                 'INPUT': layer,
-                'EXPRESSION': '\"offset_cycleway_left\" IS NOT NULL'
+                'EXPRESSION': '"offset_cycleway_left" IS NOT NULL'
             }
         )
         offset_layer_dict["cycleway"]["left"] = processing.run(
@@ -115,7 +115,7 @@ def step_02(
             'qgis:selectbyexpression',
             {
                 'INPUT': layer,
-                'EXPRESSION': '\"offset_cycleway_right\" IS NOT NULL'
+                'EXPRESSION': '"offset_cycleway_right" IS NOT NULL'
             }
         )
         offset_layer_dict["cycleway"]["right"] = processing.run(
@@ -130,7 +130,7 @@ def step_02(
             'qgis:selectbyexpression',
             {
                 'INPUT': layer,
-                'EXPRESSION': '\"offset_sidewalk_left\" IS NOT NULL'
+                'EXPRESSION': '"offset_sidewalk_left" IS NOT NULL'
             }
         )
         offset_layer_dict["sidewalk"]["left"] = processing.run(
@@ -145,7 +145,7 @@ def step_02(
             'qgis:selectbyexpression',
             {
                 'INPUT': layer,
-                'EXPRESSION': '\"offset_sidewalk_right\" IS NOT NULL'
+                'EXPRESSION': '"offset_sidewalk_right" IS NOT NULL'
             }
         )
         offset_layer_dict["sidewalk"]["right"] = processing.run(
@@ -176,10 +176,10 @@ def step_02(
                     offset_layer.changeAttributeValue(feature.id(), id_proc_highway, feature.attribute('highway'))
                     offset_layer.changeAttributeValue(feature.id(), id_proc_maxspeed, feature.attribute('maxspeed'))
 
-                    offset_layer.changeAttributeValue(feature.id(), offset_layer.fields().indexOf('width'), helper_functions.deriveAttribute(feature, 'width', way_type, side, 'float'))
-                    offset_layer.changeAttributeValue(feature.id(), offset_layer.fields().indexOf('oneway'), helper_functions.deriveAttribute(feature, 'oneway', way_type, side, 'str'))
-                    offset_layer.changeAttributeValue(feature.id(), offset_layer.fields().indexOf('oneway:bicycle'), helper_functions.deriveAttribute(feature, 'oneway:bicycle', way_type, side, 'str'))
-                    offset_layer.changeAttributeValue(feature.id(), offset_layer.fields().indexOf('traffic_sign'), helper_functions.deriveAttribute(feature, 'traffic_sign', way_type, side, 'str'))
+                    offset_layer.changeAttributeValue(feature.id(), offset_layer.fields().indexOf('width'), helper_functions.derive_attribute(feature, 'width', way_type, side, 'float'))
+                    offset_layer.changeAttributeValue(feature.id(), offset_layer.fields().indexOf('oneway'), helper_functions.derive_attribute(feature, 'oneway', way_type, side, 'str'))
+                    offset_layer.changeAttributeValue(feature.id(), offset_layer.fields().indexOf('oneway:bicycle'), helper_functions.derive_attribute(feature, 'oneway:bicycle', way_type, side, 'str'))
+                    offset_layer.changeAttributeValue(feature.id(), offset_layer.fields().indexOf('traffic_sign'), helper_functions.derive_attribute(feature, 'traffic_sign', way_type, side, 'str'))
 
                     # surface and smoothness of cycle lanes are usually the same as on the road (if not explicitly tagged)
                     if (
@@ -197,7 +197,7 @@ def step_02(
                             )
                         )
                     ):
-                        offset_layer.changeAttributeValue(feature.id(), offset_layer.fields().indexOf('surface'), helper_functions.deriveAttribute(feature, 'surface', way_type, side, 'str'))
+                        offset_layer.changeAttributeValue(feature.id(), offset_layer.fields().indexOf('surface'), helper_functions.derive_attribute(feature, 'surface', way_type, side, 'str'))
                     if (
                         way_type != 'cycleway'
                         or (
@@ -213,24 +213,24 @@ def step_02(
                             )
                         )
                     ):
-                        offset_layer.changeAttributeValue(feature.id(), offset_layer.fields().indexOf('smoothness'), helper_functions.deriveAttribute(feature, 'smoothness', way_type, side, 'str'))
+                        offset_layer.changeAttributeValue(feature.id(), offset_layer.fields().indexOf('smoothness'), helper_functions.derive_attribute(feature, 'smoothness', way_type, side, 'str'))
 
                     if way_type == 'cycleway':
-                        offset_layer.changeAttributeValue(feature.id(), offset_layer.fields().indexOf('separation'), helper_functions.deriveAttribute(feature, 'separation', way_type, side, 'str'))
-                        offset_layer.changeAttributeValue(feature.id(), offset_layer.fields().indexOf('separation:both'), helper_functions.deriveAttribute(feature, 'separation:both', way_type, side, 'str'))
-                        offset_layer.changeAttributeValue(feature.id(), offset_layer.fields().indexOf('separation:left'), helper_functions.deriveAttribute(feature, 'separation:left', way_type, side, 'str'))
-                        offset_layer.changeAttributeValue(feature.id(), offset_layer.fields().indexOf('separation:right'), helper_functions.deriveAttribute(feature, 'separation:right', way_type, side, 'str'))
+                        offset_layer.changeAttributeValue(feature.id(), offset_layer.fields().indexOf('separation'), helper_functions.derive_attribute(feature, 'separation', way_type, side, 'str'))
+                        offset_layer.changeAttributeValue(feature.id(), offset_layer.fields().indexOf('separation:both'), helper_functions.derive_attribute(feature, 'separation:both', way_type, side, 'str'))
+                        offset_layer.changeAttributeValue(feature.id(), offset_layer.fields().indexOf('separation:left'), helper_functions.derive_attribute(feature, 'separation:left', way_type, side, 'str'))
+                        offset_layer.changeAttributeValue(feature.id(), offset_layer.fields().indexOf('separation:right'), helper_functions.derive_attribute(feature, 'separation:right', way_type, side, 'str'))
 
-                        offset_layer.changeAttributeValue(feature.id(), offset_layer.fields().indexOf('buffer'), helper_functions.deriveAttribute(feature, 'buffer', way_type, side, 'str'))
-                        offset_layer.changeAttributeValue(feature.id(), offset_layer.fields().indexOf('buffer:both'), helper_functions.deriveAttribute(feature, 'buffer:both', way_type, side, 'str'))
-                        offset_layer.changeAttributeValue(feature.id(), offset_layer.fields().indexOf('buffer:left'), helper_functions.deriveAttribute(feature, 'buffer:left', way_type, side, 'str'))
-                        offset_layer.changeAttributeValue(feature.id(), offset_layer.fields().indexOf('buffer:right'), helper_functions.deriveAttribute(feature, 'buffer:right', way_type, side, 'str'))
+                        offset_layer.changeAttributeValue(feature.id(), offset_layer.fields().indexOf('buffer'), helper_functions.derive_attribute(feature, 'buffer', way_type, side, 'str'))
+                        offset_layer.changeAttributeValue(feature.id(), offset_layer.fields().indexOf('buffer:both'), helper_functions.derive_attribute(feature, 'buffer:both', way_type, side, 'str'))
+                        offset_layer.changeAttributeValue(feature.id(), offset_layer.fields().indexOf('buffer:left'), helper_functions.derive_attribute(feature, 'buffer:left', way_type, side, 'str'))
+                        offset_layer.changeAttributeValue(feature.id(), offset_layer.fields().indexOf('buffer:right'), helper_functions.derive_attribute(feature, 'buffer:right', way_type, side, 'str'))
 
-                        offset_layer.changeAttributeValue(feature.id(), offset_layer.fields().indexOf('traffic_mode:both'), helper_functions.deriveAttribute(feature, 'traffic_mode:both', way_type, side, 'str'))
-                        offset_layer.changeAttributeValue(feature.id(), offset_layer.fields().indexOf('traffic_mode:left'), helper_functions.deriveAttribute(feature, 'traffic_mode:left', way_type, side, 'str'))
-                        offset_layer.changeAttributeValue(feature.id(), offset_layer.fields().indexOf('traffic_mode:right'), helper_functions.deriveAttribute(feature, 'traffic_mode:right', way_type, side, 'str'))
+                        offset_layer.changeAttributeValue(feature.id(), offset_layer.fields().indexOf('traffic_mode:both'), helper_functions.derive_attribute(feature, 'traffic_mode:both', way_type, side, 'str'))
+                        offset_layer.changeAttributeValue(feature.id(), offset_layer.fields().indexOf('traffic_mode:left'), helper_functions.derive_attribute(feature, 'traffic_mode:left', way_type, side, 'str'))
+                        offset_layer.changeAttributeValue(feature.id(), offset_layer.fields().indexOf('traffic_mode:right'), helper_functions.derive_attribute(feature, 'traffic_mode:right', way_type, side, 'str'))
 
-                        offset_layer.changeAttributeValue(feature.id(), offset_layer.fields().indexOf('surface:colour'), helper_functions.deriveAttribute(feature, 'surface:colour', way_type, side, 'str'))
+                        offset_layer.changeAttributeValue(feature.id(), offset_layer.fields().indexOf('surface:colour'), helper_functions.derive_attribute(feature, 'surface:colour', way_type, side, 'str'))
 
     # TODO: Attribute mit "both" auf left und right aufteilen?
 

@@ -1,5 +1,9 @@
 import imp
 import time
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from qgis.core import QgsFeature, QgsVectorLayer
 
 import qgis.processing as processing
 from qgis.core import (
@@ -32,7 +36,7 @@ def step_01(layer, id_proc_highway, id_proc_maxspeed, id_proc_sidepath):
         }
     )['OUTPUT']
     # create road layer: extract all other highway types (except tracks)
-    layer_roads = processing.run(
+    layer_roads: QgsVectorLayer = processing.run(
         'qgis:extractbyexpression',
         {
             'INPUT': layer,
@@ -40,7 +44,6 @@ def step_01(layer, id_proc_highway, id_proc_maxspeed, id_proc_sidepath):
             'OUTPUT': 'memory:'
         }
     )['OUTPUT']
-
     print(time.strftime('%H:%M:%S', time.localtime()), '   Create check points...')
 
     # create "check points" along each segment (to check for near/parallel highways at every checkpoint)
@@ -69,7 +72,7 @@ def step_01(layer, id_proc_highway, id_proc_maxspeed, id_proc_sidepath):
     )['OUTPUT']
 
     # create "check buffers" (to check for near/parallel highways with in the given distance)
-    layer_path_points_buffers = processing.run(
+    layer_path_points_buffers: QgsVectorLayer = processing.run(
         'native:buffer',
         {
             'INPUT': layer_path_points,
@@ -85,7 +88,6 @@ def step_01(layer, id_proc_highway, id_proc_maxspeed, id_proc_sidepath):
     sidepath_dict = {}
     for buffer in layer_path_points_buffers.getFeatures():
         buffer_id = buffer.attribute('id')
-        buffer_layer = buffer.attribute('layer')
         if buffer_id not in sidepath_dict:
             sidepath_dict[buffer_id] = {}
             sidepath_dict[buffer_id]['checks'] = 1
@@ -111,15 +113,17 @@ def step_01(layer, id_proc_highway, id_proc_maxspeed, id_proc_sidepath):
         highway_list = []
         name_list = []
         maxspeed_dict = {}
+        road: QgsFeature
         for road in layer_roads.selectedFeatures():
-            road_layer = road.attribute('layer')
-            if buffer_layer != road_layer:
+            if buffer.attribute('layer') != road.attribute('layer'):
                 # only consider geometries in the same layer
                 continue
+
             road_id = road.attribute('id')
             road_highway = road.attribute('highway')
             road_name = road.attribute('name')
             road_maxspeed = helper_functions.cast_to_float(road.attribute('maxspeed'))
+
             if road_id not in id_list:
                 id_list.append(road_id)
             if road_highway not in highway_list:
@@ -128,16 +132,19 @@ def step_01(layer, id_proc_highway, id_proc_maxspeed, id_proc_sidepath):
                 maxspeed_dict[road_highway] = road_maxspeed
             if road_name not in name_list:
                 name_list.append(road_name)
+
         for road_id in id_list:
             if road_id in sidepath_dict[buffer_id]['id']:
                 sidepath_dict[buffer_id]['id'][road_id] += 1
             else:
                 sidepath_dict[buffer_id]['id'][road_id] = 1
+
         for road_highway in highway_list:
             if road_highway in sidepath_dict[buffer_id]['highway']:
                 sidepath_dict[buffer_id]['highway'][road_highway] += 1
             else:
                 sidepath_dict[buffer_id]['highway'][road_highway] = 1
+
         for road_name in name_list:
             if road_name in sidepath_dict[buffer_id]['name']:
                 sidepath_dict[buffer_id]['name'][road_name] += 1
