@@ -9,15 +9,15 @@
 #---------------------------------------------------------------------------#
 
 from os.path import exists
-import os, processing, math, time
+import processing, math, time
+import pathlib
 
 #-------------------------------------------------#
 #   V a r i a b l e s   a n d   S e t t i n g s   #
 #-------------------------------------------------#
 
 #project directory
-from console.console import _console
-project_dir = os.path.dirname(_console.console.tabEditorWidget.currentWidget().path) + '/'
+project_dir = pathlib.Path(__file__).parents[0]  # project directory
 dir_input = project_dir + 'data/way_import.geojson'
 dir_output = project_dir + 'data/cycling_quality_index.geojson'
 
