@@ -5,7 +5,7 @@
 #   Download OSM data input from https://overpass-turbo.eu/s/1G3t,          #
 #   save it at data/way_import.geojson and run the script.                  #
 #                                                                           #
-#   > version/date: 2024-02-28                                              #
+#   > version/date: 2024-03-02                                              #
 # ------------------------------------------------------------------------- #
 
 import imp
