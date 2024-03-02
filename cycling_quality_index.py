@@ -8,9 +8,12 @@
 #   > version/date: 2024-02-28                                              #
 #---------------------------------------------------------------------------#
 
-from os.path import exists
-import processing, math, time
+import math
 import pathlib
+import time
+from os.path import exists
+
+import processing
 
 #-------------------------------------------------#
 #   V a r i a b l e s   a n d   S e t t i n g s   #
@@ -331,7 +334,7 @@ data_incompleteness_dict = {
 
 
 #-------------------------------
-#   V a r i a b l e s   E n d   
+#   V a r i a b l e s   E n d
 #-------------------------------
 
 
@@ -374,7 +377,7 @@ def deriveSeparation(feature, traffic_mode):
             separation = separation_right
 
             #TODO: Wenn beidseitig gleicher traffic_mode, dann schwächere separation übergeben
-            
+
     #default for the left side: adjacent motor vehicle traffic
     if traffic_mode == 'motor_vehicle':
         if traffic_mode_right in ['motor_vehicle', 'parking', 'psv']:
@@ -673,7 +676,7 @@ else:
     'cycleway:both:traffic_sign',
     'cycleway:left:traffic_sign',
     'cycleway:right:traffic_sign',
-    
+
     'cycleway:lanes',
     'cycleway:lanes:forward',
     'cycleway:lanes:backward',
@@ -924,7 +927,7 @@ else:
                         else:
                             if sidepath_dict[id]['highway'][highway] >= checks * 0.66:
                                 is_sidepath = 'yes'
-                
+
                 if is_sidepath != 'yes':
                     for name in sidepath_dict[id]['name'].keys():
                         if checks <= 2:
@@ -1170,7 +1173,7 @@ else:
                                     way_type = 'cycle path'
                                     if not feature.attribute('proc_sidepath') in ['yes', 'no']:
                                         print(feature.attribute('id'))
-                            
+
                             elif is_sidepath == 'yes':
                                 separation_motor_vehicle = deriveSeparation(feature, 'motor_vehicle')
                                 if not separation_motor_vehicle in [NULL, 'no', 'none']:
@@ -1674,7 +1677,7 @@ else:
                 proc_surface = NULL
             if proc_smoothness not in smoothness_factor_dict:
                 proc_smoothness = NULL
-            
+
             layer.changeAttributeValue(feature.id(), id_proc_surface, proc_surface)
             layer.changeAttributeValue(feature.id(), id_proc_smoothness, proc_smoothness)
 
