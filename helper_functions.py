@@ -2,11 +2,13 @@
 functions used in multiple files to be imported
 """
 
+from typing import Any, List, Optional
+
 from qgis import *
 from qgis.core import *
+from qgis.core import NULL, QgsFeature
 from qgis.PyQt.QtCore import *
-from qgis.core import QgsFeature
-from qgis.core import NULL
+from qgis.PyQt.QtCore import QVariant  # type: ignore
 
 debug_warning_counter__derive_attribute = 0
 debug_warning_counter__cast_to_float = 0
@@ -98,7 +100,7 @@ def get_access(feature, access_key):
     return access_value
 
 
-def cast_to_float(value):
+def cast_to_float(value: Any) -> QVariant | float:
     # return a value as a float
     try:
         return float(value)
@@ -112,12 +114,12 @@ def cast_to_float(value):
         return NULL
 
 
-def get_weakest_surface_value(value_list):
+def get_weakest_surface_value(values: List[str]) -> Optional[str]:
     """
     from a list of surface values, choose the weakest one
     """
 
-    # surface values in descent order
+    # surface values in descending order
     surface_value_list = [
         'asphalt',
         'paved',
@@ -150,15 +152,12 @@ def get_weakest_surface_value(value_list):
         'rock'
     ]
 
-    value = NULL
-    for i in range(len(value_list)):
-        if value_list[i] in surface_value_list:
-            if not value:
-                value = value_list[i]
-            else:
-                if surface_value_list.index(value_list[i]) > surface_value_list.index(value):
-                    value = value_list[i]
-    return value
+    return_value = None
+    for value in values:
+        if value in surface_value_list:
+            if surface_value_list.index(value) > surface_value_list.index(value):
+                return_value = value
+    return return_value
 
 
 def add_delimited_value(var, value):

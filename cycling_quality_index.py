@@ -9,7 +9,6 @@
 """
 
 import imp
-import imp
 import pathlib
 
 import script_main

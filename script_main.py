@@ -1,10 +1,7 @@
 import imp
 import time
 from os.path import exists
-from typing import TYPE_CHECKING
-
-if TYPE_CHECKING:
-    from pathlib import Path
+from pathlib import Path
 
 import qgis.processing as processing  # type: ignore
 from qgis.core import (  # type: ignore
@@ -37,7 +34,7 @@ def main(dir_input: Path, dir_output: Path) -> None:
         layer_way_input = QgsVectorLayer(f"{dir_input}|geometrytype=LineString", 'way input', 'ogr')
 
         print(time.strftime('%H:%M:%S', time.localtime()), 'Reproject data...')
-        layer = processing.run(
+        layer_1: QgsVectorLayer = processing.run(
             'native:reprojectlayer',
             {
                 'INPUT': layer_way_input,
@@ -244,10 +241,10 @@ def main(dir_input: Path, dir_output: Path) -> None:
             'crossing',
             'crossing:markings'
         ]
-        layer = processing.run(
+        layer: QgsVectorLayer = processing.run(
             'native:retainfields',
             {
-                'INPUT': layer,
+                'INPUT': layer_1,
                 'FIELDS': attributes_list,
                 'OUTPUT': 'memory:'
             }

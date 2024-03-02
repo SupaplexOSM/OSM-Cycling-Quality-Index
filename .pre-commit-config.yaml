@@ -26,9 +26,9 @@ repos:
     hooks:
       - id: isort
         name: isort
-# -   repo: https://github.com/pre-commit/mirrors-mypy
-#     rev: 'v0.931'  # Use the sha / tag you want to point at
-#     hooks:
-#     -   id: mypy
-#         args: [--disallow-untyped-defs, --disallow-incomplete-defs]
-#         # args: [--disallow-untyped-defs, --disallow-incomplete-defs, --disallow-untyped-calls]
+-   repo: https://github.com/pre-commit/mirrors-mypy
+    rev: 'v0.931'  # Use the sha / tag you want to point at
+    hooks:
+    -   id: mypy
+        args: [--disallow-untyped-defs, --disallow-incomplete-defs]
+        # args: [--disallow-untyped-defs, --disallow-incomplete-defs, --disallow-untyped-calls]

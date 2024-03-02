@@ -6,6 +6,7 @@ import qgis.processing as processing
 from qgis.core import (
     NULL, QgsProcessingFeatureSourceDefinition, QgsProperty, edit
 )
+from qgis.PyQt.QtCore import QVariant  # type: ignore
 
 import helper_functions
 import vars_settings
@@ -36,8 +37,8 @@ def step_02(
     with edit(layer):
         for feature in layer.getFeatures():
             highway = feature.attribute('highway')
-            cycleway = feature.attribute('cycleway')
-            cycleway_both = feature.attribute('cycleway:both')
+            cycleway: QVariant = feature.attribute('cycleway')
+            cycleway_both: QVariant = feature.attribute('cycleway:both')
             cycleway_left = feature.attribute('cycleway:left')
             cycleway_right = feature.attribute('cycleway:right')
             sidewalk_bicycle = feature.attribute('sidewalk:bicycle')

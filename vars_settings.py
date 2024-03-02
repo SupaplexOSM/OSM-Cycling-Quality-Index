@@ -3,8 +3,9 @@ place to put setting variables to be imported and used as constants
 """
 
 from collections import defaultdict
+from typing import Dict
 
-from qgis.core import (
+from qgis.core import (  # type: ignore
     NULL, QgsCoordinateReferenceSystem, QgsCoordinateTransform,
     QgsCoordinateTransformContext, QgsProject, QgsVectorFileWriter
 )
@@ -27,7 +28,7 @@ default_oneway_cycle_track = 'yes'  # assume that cycle tracks are oneways
 cycling_highway_prohibition_list = ['motorway', 'motorway_link', 'trunk', 'trunk_link']
 
 
-default_highway_width_dict = defaultdict(lambda: 11)  # Default values for road/way width
+default_highway_width_dict: Dict[str, float] = defaultdict(lambda: 11.0)  # Default values for road/way width
 for key, value in {
     'motorway': 15,
     'motorway_link': 6,
@@ -101,7 +102,7 @@ default_track_surface_dict = {  # common surface on tracks according to tracktyp
     'grade5': 'grass'
 }
 
-surface_factor_dict = {
+surface_factor_dict: Dict[str, float] = {
     'asphalt': 1,
     'paved': 1,
     'concrete': 1,

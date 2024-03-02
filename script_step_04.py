@@ -1,7 +1,9 @@
 import imp
 import time
+from typing import Optional, Tuple
 
-from qgis.core import NULL, edit
+from qgis.core import NULL, QgsFeature, QgsVectorLayer, edit
+from qgis.PyQt.QtCore import QVariant  # type: ignore
 
 import helper_functions
 import script_step_05
@@ -13,22 +15,22 @@ imp.reload(script_step_05)
 
 
 def function_40(
-    feature,
+    feature: QgsFeature,
     way_type,
     side,
     layer,
     id_proc_oneway,
-):
+) -> Tuple[QVariant | str | None, QVariant]:
     """
     Derive oneway status.
     Can be one of the values in oneway_value_list (oneway applies to all vehicles, also for bicycles) or '*_motor_vehicles' (value applies to motor vehicles only)
     """
 
     oneway_value_list = ['yes', 'no', '-1', 'alternating', 'reversible']
-    proc_oneway = NULL
-    oneway = feature.attribute('oneway')
-    oneway_bicycle = feature.attribute('oneway:bicycle')
-    cycleway_oneway = feature.attribute('cycleway:oneway')
+    proc_oneway: QVariant | None = None
+    oneway: QVariant = feature.attribute('oneway')
+    oneway_bicycle: QVariant = feature.attribute('oneway:bicycle')
+    cycleway_oneway: QVariant = feature.attribute('cycleway:oneway')
     if way_type in ['cycle path', 'cycle track', 'shared path', 'segregated path', 'shared footway', 'crossing', 'link', 'cycle lane (advisory)', 'cycle lane (exclusive)', 'cycle lane (protected)', 'cycle lane (central)']:
         if oneway in oneway_value_list:
             proc_oneway = oneway
@@ -67,11 +69,11 @@ def function_40(
 
 def function_41(
     way_type,
-    feature,
+    feature: QgsFeature,
     proc_oneway,
     side,
     oneway,
-    data_missing,
+    data_missing: str,
 ):
     """
     Derive width.
@@ -335,10 +337,10 @@ def function_41(
 
 
 def function_42(
-    feature,
-    way_type,
-    data_missing,
-):
+    feature: QgsFeature,
+    way_type: QVariant,
+    data_missing: str,
+) -> Tuple[Optional[str | QVariant], QVariant]:
     """
     Derive surface and smoothness.
     """
@@ -379,7 +381,6 @@ def function_42(
                         proc_smoothness = smoothness
                     else:
                         data_missing = helper_functions.add_delimited_value(data_missing, 'smoothness')
-
         else:
             # surface and smoothness for cycle lanes and sidewalks have already been derived from original tags when calculating way offsets
             proc_surface = feature.attribute('surface')
@@ -410,26 +411,26 @@ def function_42(
     if ';' in proc_surface:
         proc_surface = helper_functions.get_weakest_surface_value(proc_surface.split(';'))
     if proc_surface not in vars_settings.surface_factor_dict:
-        proc_surface = NULL
+        proc_surface = None
     if proc_smoothness not in vars_settings.smoothness_factor_dict:
         proc_smoothness = NULL
     return proc_surface, proc_smoothness
 
 
 def function_43(
-    way_type,
-    feature,
-    is_sidepath,
-    side,
-):
+    way_type: QVariant,
+    feature: QgsFeature,
+    is_sidepath: QVariant,
+    side: QVariant,
+) -> Tuple[QVariant | str, str | QVariant, QVariant | str, QVariant | str, QVariant | float, QVariant | float]:
     """
     Derive (physical) separation and buffer.
     """
 
-    traffic_mode_left = NULL
-    traffic_mode_right = NULL
-    separation_left = NULL
-    separation_right = NULL
+    traffic_mode_left: QVariant | str = NULL
+    traffic_mode_right: str | QVariant = NULL
+    separation_left: QVariant | str = NULL
+    separation_right: QVariant | str = NULL
     buffer_left = NULL
     buffer_right = NULL
 
@@ -538,23 +539,22 @@ def function_43(
 
 
 def function_44(
-    feature,
-    way_type,
-    proc_oneway,
-    is_sidepath,
-):
+    feature: QgsFeature,
+    way_type: str,
+    proc_oneway: QVariant | str | None,
+    is_sidepath: QVariant,
+) -> Tuple[QVariant | str, QVariant, QVariant, QVariant, QVariant, QVariant, QVariant]:
     """
     Derive mandatory use as an extra information (not used for index calculation).
     """
     proc_mandatory = NULL
-    proc_traffic_sign = NULL
 
-    cycleway = feature.attribute('cycleway')
-    cycleway_both = feature.attribute('cycleway:both')
-    cycleway_left = feature.attribute('cycleway:left')
-    cycleway_right = feature.attribute('cycleway:right')
-    bicycle = feature.attribute('bicycle')
-    traffic_sign: str = feature.attribute('traffic_sign')
+    cycleway: QVariant = feature.attribute('cycleway')
+    cycleway_both: QVariant = feature.attribute('cycleway:both')
+    cycleway_left: QVariant = feature.attribute('cycleway:left')
+    cycleway_right: QVariant = feature.attribute('cycleway:right')
+    bicycle: QVariant = feature.attribute('bicycle')
+    traffic_sign: QVariant = feature.attribute('traffic_sign')
     proc_traffic_sign = traffic_sign
 
     if way_type in ['bicycle road', 'shared road', 'shared traffic lane', 'track or service']:
@@ -588,40 +588,40 @@ def function_44(
 
 
 def step_04(
-    layer,
-    id_proc_oneway,
-    id_proc_width,
-    id_proc_surface,
-    id_proc_smoothness,
-    id_proc_traffic_mode_left,
-    id_proc_traffic_mode_right,
-    id_proc_separation_left,
-    id_proc_separation_right,
-    id_proc_buffer_left,
-    id_proc_buffer_right,
-    id_proc_mandatory,
-    id_proc_traffic_sign,
-    id_base_index,
-    id_fac_width,
-    id_fac_surface,
-    id_fac_highway,
-    id_fac_maxspeed,
-    id_fac_1,
-    id_fac_2,
-    id_fac_3,
-    id_fac_4,
-    id_index,
-    id_data_missing,
-    id_data_bonus,
-    id_data_malus,
-    id_data_incompleteness,
-    id_fac_protection_level,
-    id_prot_level_separation_left,
-    id_prot_level_separation_right,
-    id_prot_level_buffer_left,
-    id_prot_level_buffer_right,
-    id_prot_level_left,
-    id_prot_level_right,
+    layer: QgsVectorLayer,
+    id_proc_oneway: int,
+    id_proc_width: int,
+    id_proc_surface: int,
+    id_proc_smoothness: int,
+    id_proc_traffic_mode_left: int,
+    id_proc_traffic_mode_right: int,
+    id_proc_separation_left: int,
+    id_proc_separation_right: int,
+    id_proc_buffer_left: int,
+    id_proc_buffer_right: int,
+    id_proc_mandatory: int,
+    id_proc_traffic_sign: int,
+    id_base_index: int,
+    id_fac_width: int,
+    id_fac_surface: int,
+    id_fac_highway: int,
+    id_fac_maxspeed: int,
+    id_fac_1: int,
+    id_fac_2: int,
+    id_fac_3: int,
+    id_fac_4: int,
+    id_index: int,
+    id_data_missing: int,
+    id_data_bonus: int,
+    id_data_malus: int,
+    id_data_incompleteness: int,
+    id_fac_protection_level: int,
+    id_prot_level_separation_left: int,
+    id_prot_level_separation_right: int,
+    id_prot_level_buffer_left: int,
+    id_prot_level_buffer_right: int,
+    id_prot_level_left: int,
+    id_prot_level_right: int,
 ) -> None:
     """
     4: Derive relevant attributes for index and factors
@@ -630,10 +630,10 @@ def step_04(
     print(time.strftime('%H:%M:%S', time.localtime()), 'Derive attributes...')
     with edit(layer):
         for feature in layer.getFeatures():
-            way_type = feature.attribute('way_type')
-            side = feature.attribute('side')
-            is_sidepath = feature.attribute('proc_sidepath')
-            data_missing = ''
+            way_type: QVariant = feature.attribute('way_type')
+            side: QVariant = feature.attribute('side')
+            is_sidepath: QVariant = feature.attribute('proc_sidepath')
+            data_missing: str = ''
 
             proc_oneway, oneway = function_40(
                 feature,

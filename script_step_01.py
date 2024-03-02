@@ -1,14 +1,12 @@
 import imp
 import time
-from typing import TYPE_CHECKING
-
-if TYPE_CHECKING:
-    from qgis.core import QgsFeature, QgsVectorLayer
 
 import qgis.processing as processing
 from qgis.core import (
-    NULL, QgsProcessingFeatureSourceDefinition, QgsProject, edit
+    NULL, QgsFeature, QgsProcessingFeatureSourceDefinition, QgsProject,
+    QgsVectorLayer, edit
 )
+from qgis.PyQt.QtCore import QVariant  # type: ignore
 
 import helper_functions
 import vars_settings
@@ -17,7 +15,12 @@ imp.reload(vars_settings)
 imp.reload(helper_functions)
 
 
-def step_01(layer, id_proc_highway, id_proc_maxspeed, id_proc_sidepath):
+def step_01(
+    layer: QgsVectorLayer,
+    id_proc_highway: int,
+    id_proc_maxspeed: int,
+    id_proc_sidepath: int,
+):
     """
     Check paths whether they are sidepath (a path along a road)
     """
@@ -161,7 +164,7 @@ def step_01(layer, id_proc_highway, id_proc_maxspeed, id_proc_sidepath):
     with edit(layer):
         for feature in layer.getFeatures():
             hw = feature.attribute('highway')
-            maxspeed = feature.attribute('maxspeed')
+            maxspeed: QVariant = feature.attribute('maxspeed')
             if maxspeed == 'walk':
                 maxspeed = 10
             else:
@@ -171,10 +174,10 @@ def step_01(layer, id_proc_highway, id_proc_maxspeed, id_proc_sidepath):
                 layer.changeAttributeValue(feature.id(), id_proc_maxspeed, maxspeed)
                 continue
             id = feature.attribute('id')
-            is_sidepath = feature.attribute('is_sidepath')
+            is_sidepath: QVariant = feature.attribute('is_sidepath')
             if feature.attribute('footway') == 'sidewalk':
                 is_sidepath = 'yes'
-            is_sidepath_of = feature.attribute('is_sidepath:of')
+            is_sidepath_of: QVariant = feature.attribute('is_sidepath:of')
             checks = sidepath_dict[id]['checks']
 
             if not is_sidepath:
