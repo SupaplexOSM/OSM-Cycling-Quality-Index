@@ -8,12 +8,30 @@
 #   > version/date: 2024-02-28                                              #
 #---------------------------------------------------------------------------#
 
+import imp
 import math
 import pathlib
 import time
+from collections import defaultdict
 from os.path import exists
+from pathlib import Path
+from typing import Any, Dict, List, Optional, Tuple
 
-import processing
+import qgis.processing as processing  # type: ignore
+from qgis.core import (  # type: ignore
+    NULL, QgsCoordinateReferenceSystem, QgsCoordinateTransform,
+    QgsCoordinateTransformContext, QgsFeature, QgsField,
+    QgsProcessingFeatureSourceDefinition, QgsProject, QgsProperty,
+    QgsVectorFileWriter, QgsVectorLayer, edit
+)
+from qgis.PyQt.QtCore import QVariant  # type: ignore
+
+import helper_functions
+import vars_settings
+
+imp.reload(vars_settings)  # to force QGis to see changes in that file
+imp.reload(helper_functions)  # to force QGis to see changes in that file
+
 
 #-------------------------------------------------#
 #   V a r i a b l e s   a n d   S e t t i n g s   #
@@ -21,8 +39,8 @@ import processing
 
 #project directory
 project_dir = pathlib.Path(__file__).parents[0]  # project directory
-dir_input = project_dir + 'data/way_import.geojson'
-dir_output = project_dir + 'data/cycling_quality_index.geojson'
+dir_input = project_dir / 'data/way_import.geojson'
+dir_output = project_dir / 'data/cycling_quality_index.geojson'
 
 #right or left hand traffic?
 #TODO: left hand traffic not supported yet in most cases
@@ -482,9 +500,9 @@ print(time.strftime('%H:%M:%S', time.localtime()), 'Start processing:')
 
 print(time.strftime('%H:%M:%S', time.localtime()), 'Read data...')
 if not exists(dir_input):
-    print(time.strftime('%H:%M:%S', time.localtime()), '[!] Error: No valid input file at "' + dir_input + '".')
+    print(time.strftime('%H:%M:%S', time.localtime()), f'[!] Error: No valid input file at "{dir_input}".')
 else:
-    layer_way_input = QgsVectorLayer(dir_input + '|geometrytype=LineString', 'way input', 'ogr')
+    layer_way_input = QgsVectorLayer(f'{dir_input}|geometrytype=LineString', 'way input', 'ogr')
 
     print(time.strftime('%H:%M:%S', time.localtime()), 'Reproject data...')
     layer = processing.run('native:reprojectlayer', { 'INPUT' : layer_way_input, 'TARGET_CRS' : QgsCoordinateReferenceSystem(crs_to), 'OUTPUT': 'memory:'})['OUTPUT']
@@ -2149,7 +2167,7 @@ else:
 
     #clean up data set
     print(time.strftime('%H:%M:%S', time.localtime()), 'Clean up data...')
-    processing.run('native:retainfields', { 'INPUT' : layer, 'FIELDS' : retained_attributes_list, 'OUTPUT': dir_output })
+    processing.run('native:retainfields', { 'INPUT' : layer, 'FIELDS' : retained_attributes_list, 'OUTPUT': f"{dir_output}" })
 
 
 
