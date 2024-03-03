@@ -30,5 +30,23 @@ repos:
     rev: 'v0.931'  # Use the sha / tag you want to point at
     hooks:
     -   id: mypy
-        args: [--disallow-untyped-defs, --disallow-incomplete-defs]
-        # args: [--disallow-untyped-defs, --disallow-incomplete-defs, --disallow-untyped-calls]
+        args: [
+            --disallow-untyped-defs,
+            --disallow-incomplete-defs,
+            --disallow-untyped-calls,
+            --disallow-any-explicit,
+            --disallow-any-generics,
+            --disallow-subclassing-any,
+            --check-untyped-defs,
+            --warn-redundant-casts,
+            --warn-unused-ignores,
+            --warn-return-any,
+            --warn-unreachable,
+            --disallow-redefinition,
+            --strict-equality,
+            --strict,
+            --show-error-context,
+            --show-column-numbers,
+            # --show-error-code-links,
+            # --pretty
+        ]

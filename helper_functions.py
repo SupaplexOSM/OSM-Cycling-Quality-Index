@@ -2,7 +2,7 @@
 functions used in multiple files to be imported
 """
 
-from typing import Any, List, Optional, Type
+from typing import List, Optional
 
 from qgis.core import NULL, QgsFeature  # type: ignore
 from qgis.PyQt.QtCore import QVariant  # type: ignore
@@ -12,7 +12,7 @@ debug_warning_counter__cast_to_float = 0
 debug_warning_counter_max_val = 5
 
 
-def derive_attribute(feature: QgsFeature, attribute_name: str, way_type: str, side: str, vartype: Type) -> None | int | float | str:
+def derive_attribute(feature: QgsFeature, attribute_name: str, way_type: str, side: str, vartype: type) -> None | int | float | str:
     """
     derive cycleway and sidewalk attributes mapped on the centerline for transferring them to separate ways
     """
@@ -99,7 +99,7 @@ def get_access(feature: QgsFeature, access_key: str) -> QVariant | None:
     return access_value
 
 
-def cast_to_float(value: Any) -> QVariant | float:
+def cast_to_float(value: QVariant | int | float) -> QVariant | float:
     # return a value as a float
     try:
         return float(value)

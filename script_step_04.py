@@ -202,9 +202,9 @@ def function_41(
                 if parking_left == 'half_on_kerb':
                     parking_left_width = float(parking_left_width) / 2
                 if not parking_right_width:
-                    parking_right_width = 0
+                    parking_right_width = 0.0
                 if not parking_left_width:
-                    parking_left_width = 0
+                    parking_left_width = 0.0
 
                 # derive cycle lane width
                 cycleway = feature.attribute('cycleway')
@@ -289,9 +289,9 @@ def function_41(
                             else:
                                 break
                 if not cycleway_right_width:
-                    cycleway_right_width = 0
+                    cycleway_right_width = 0.0
                 if not cycleway_left_width:
-                    cycleway_left_width = 0
+                    cycleway_left_width = 0.0
                 if not cycleway_right_buffer_left or cycleway_right_buffer_left == 'no' or cycleway_right_buffer_left == 'none':
                     cycleway_right_buffer_left = 0.0
                 if not cycleway_right_buffer_right or cycleway_right_buffer_right == 'no' or cycleway_right_buffer_right == 'none':

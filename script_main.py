@@ -343,7 +343,7 @@ def main(dir_input: Path, dir_output: Path) -> None:
         id_fac_highway = layer.fields().indexOf('fac_highway')
         id_fac_maxspeed = layer.fields().indexOf('fac_maxspeed')
         id_fac_protection_level = layer.fields().indexOf('fac_protection_level')
-        id_prot_level_separation_left = layer.fields().indexOf('prot_level_separation_left')
+        id_prot_level_separation_left: int = layer.fields().indexOf('prot_level_separation_left')
         id_prot_level_separation_right = layer.fields().indexOf('prot_level_separation_right')
         id_prot_level_buffer_left = layer.fields().indexOf('prot_level_buffer_left')
         id_prot_level_buffer_right = layer.fields().indexOf('prot_level_buffer_right')

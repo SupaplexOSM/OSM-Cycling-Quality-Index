@@ -111,7 +111,7 @@ def step_01(
                 'maxspeed': defaultdict(lambda: -1.0),
             }
         else:
-            sidepath_dict[buffer_id]['checks'] += 1  # type: ignore
+            sidepath_dict[buffer_id]['checks'] += 1
         layer_path_points_buffers.removeSelection()
         layer_path_points_buffers.select(buffer.id())
         processing.run(

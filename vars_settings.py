@@ -17,7 +17,7 @@ right_hand_traffic = True
 # offset distance for sidepath ways
 # -> set variable to 'realistic' (offset is derived from osm tags like width values)
 # -> or set to a number for a static offset (meter, can also be 0, if no offset is needed, e.g. for better routing analysis)
-offset_distance = 0
+offset_distance: int | str = 0
 # offset_distance = 'realistic'
 
 # Default oneway on cycle lanes and tracks
