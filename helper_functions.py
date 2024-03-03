@@ -4,10 +4,7 @@ functions used in multiple files to be imported
 
 from typing import Any, List, Optional
 
-from qgis import *
-from qgis.core import *
 from qgis.core import NULL, QgsFeature
-from qgis.PyQt.QtCore import *
 from qgis.PyQt.QtCore import QVariant  # type: ignore
 
 debug_warning_counter__derive_attribute = 0
