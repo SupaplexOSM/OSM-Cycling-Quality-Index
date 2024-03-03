@@ -368,6 +368,7 @@ def main(dir_input: Path, dir_output: Path) -> None:
             id_proc_maxspeed,
             id_proc_sidepath,
         )
+
         script_step_02.step_02(
             layer,
             id_offset_cycleway_left,
@@ -381,10 +382,12 @@ def main(dir_input: Path, dir_output: Path) -> None:
             id_proc_highway,
             id_proc_maxspeed,
         )
+
         script_step_03.step_03(
             layer,
             id_way_type
         )
+
         script_step_04.step_04(
             layer,
             id_proc_oneway,

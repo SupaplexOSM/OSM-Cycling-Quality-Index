@@ -3,7 +3,7 @@ place to put setting variables to be imported and used as constants
 """
 
 from collections import defaultdict
-from typing import Dict
+from typing import DefaultDict, Dict, List
 
 from qgis.core import (  # type: ignore
     NULL, QgsCoordinateReferenceSystem, QgsCoordinateTransform,
@@ -25,11 +25,16 @@ default_oneway_cycle_lane = 'yes'  # assume that cycle lanes are oneways
 default_oneway_cycle_track = 'yes'  # assume that cycle tracks are oneways
 
 # highway values with cycling prohibition
-cycling_highway_prohibition_list = ['motorway', 'motorway_link', 'trunk', 'trunk_link']
+cycling_highway_prohibition_list = [
+    'motorway',
+    'motorway_link',
+    'trunk',
+    'trunk_link'
+]
 
 
-default_highway_width_dict: Dict[str, float] = defaultdict(lambda: 11.0)  # Default values for road/way width
-for key, value in {
+# Default values for road/way width
+default_highway_width_defaultdict: DefaultDict[str, float] = defaultdict(lambda: 11.0, {
     'motorway': 15,
     'motorway_link': 6,
     'trunk': 15,
@@ -52,8 +57,7 @@ for key, value in {
     'bridleway': 2,
     'steps': 2,
     'path': 2
-}.items():
-    default_highway_width_dict[key] = value
+})
 
 # Default values for width quality evaluations on shared roads:
 default_width_traffic_lane = 3.2           # average width of a driving lane (for common motor cars)
@@ -71,7 +75,9 @@ default_width_parking_perpendicular = 5.0  # average width of perpendicular park
 # Default surface values
 default_cycleway_surface_tracks = 'paving_stones'  # common surface on cycle tracks
 default_cycleway_surface_lanes = 'asphalt'  # common surface on cycle lanes
-default_highway_surface_dict = {  # common surface on highways
+
+# common surface on highways
+default_highway_surface_defaultdict: DefaultDict[str, str] = defaultdict(lambda: "paving_stones", {
     'motorway': 'asphalt',
     'motorway_link': 'asphalt',
     'trunk': 'asphalt',
@@ -92,15 +98,18 @@ default_highway_surface_dict = {  # common surface on highways
     'cycleway': 'paving_stones',
     'footway': 'paving_stones',
     'path': 'paving_stones'
-}
+})
 
-default_track_surface_dict = {  # common surface on tracks according to tracktype
+
+# common surface on tracks according to tracktype
+default_track_surface_defaultdict: DefaultDict[str, str] = defaultdict(lambda: "unpaved", {
     'grade1': 'asphalt',
     'grade2': 'compacted',
     'grade3': 'unpaved',
     'grade4': 'ground',
     'grade5': 'grass'
-}
+})
+
 
 surface_factor_dict: Dict[str, float] = {
     'asphalt': 1,
@@ -134,7 +143,7 @@ surface_factor_dict: Dict[str, float] = {
     'rock': 0.15
 }
 
-smoothness_factor_dict = {
+smoothness_factor_dict: Dict[str, float] = {
     'excellent': 1.1,
     'good': 1,
     'intermediate': 0.7,
@@ -145,7 +154,7 @@ smoothness_factor_dict = {
     'impassable': 0
 }
 
-highway_factor_dict = {
+highway_factor_dict: Dict[str, float] = {
     'motorway': 0.1,
     'motorway_link': 0.1,
     'trunk': 0.15,
@@ -162,7 +171,7 @@ highway_factor_dict = {
     'living_street': 1.1
 }
 
-maxspeed_factor_dict = {
+maxspeed_factor_dict: Dict[int, float] = {
     20: 1.05,
     30: 1,
     50: 0.95,
@@ -171,7 +180,7 @@ maxspeed_factor_dict = {
     100: 0.5
 }
 
-highway_factor_dict_weights = {
+highway_factor_weights_defaultdict: DefaultDict[str, float] = defaultdict(lambda: 1.0, {
     'bicycle road': 1,
     'shared road': 1,
     'shared traffic lane': 1,
@@ -187,10 +196,11 @@ highway_factor_dict_weights = {
     'segregated path': 0.2,
     'shared footway': 0.2,
     'track or service': 0,
-    'cycle path': 0
-}
+    'cycle path': 0,
+})
 
-separation_level_dict = {
+
+separation_level_defaultdict: DefaultDict[str, float] = defaultdict(lambda: 0.3, {
     'no': 0,
     'none': 0,
     NULL: 0,
@@ -210,11 +220,10 @@ separation_level_dict = {
     'hedge': 0.9,
     'fence': 1,
     'guard_rail': 1,
-    'ELSE': 0.3
-}
+})
 
 # base index for way types (0 .. 100)
-base_index_dict = {
+base_index_defaultdict: DefaultDict[str, int] = defaultdict(lambda: 0, {
     'cycle path': 100,
     'cycle track': 90,
     'shared path': 70,
@@ -231,10 +240,10 @@ base_index_dict = {
     'track or service': 65,
     'link': 60,
     'crossing': 60
-}
+})
 
 # base index for roads with restricted motor vehicle access
-motor_vehicle_access_index_dict = {
+motor_vehicle_access_index_dict: Dict[str, int] = {
     'no': 100,
     'agricultural': 90,
     'forestry': 90,
@@ -263,7 +272,7 @@ save_options.driverName = 'GeoJSON'
 save_options.ct = QgsCoordinateTransform(QgsCoordinateReferenceSystem(crs_from), QgsCoordinateReferenceSystem(crs_to), coordinateTransformContext)
 
 # list of attributes that are retained in the saved file
-retained_attributes_list = [
+retained_attributes_list: List[str] = [
     'id',
     'name',
     'way_type',
@@ -307,8 +316,8 @@ retained_attributes_list = [
     'data_malus'
 ]
 
-# missing data values and how much they wight for a data (in)completeness number
-data_incompleteness_dict = {
+# missing data values and how much they weight for a data (in)completeness number
+data_incompleteness_defaultdict: DefaultDict[str, float] = defaultdict(lambda: 0.0, {
     'width': 25,
     'surface': 30,
     'smoothness': 10,
@@ -317,4 +326,4 @@ data_incompleteness_dict = {
     'crossing': 10,
     'crossing_markings': 10,
     'lit': 15
-}
+})

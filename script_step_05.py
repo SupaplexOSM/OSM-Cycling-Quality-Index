@@ -1,7 +1,10 @@
 import imp
 import math
+from typing import Optional, Tuple
 
-from qgis.core import NULL
+from qgis.core import NULL  # type: ignore
+from qgis.core import QgsFeature, QgsVectorLayer
+from qgis.PyQt.QtCore import QVariant  # type: ignore
 
 import helper_functions
 import vars_settings
@@ -11,20 +14,17 @@ imp.reload(helper_functions)
 
 
 def function_50(
-    way_type,
-    feature,
-    layer,
-    id_base_index,
-    data_bonus,
-):
+    way_type: QVariant,
+    feature: QgsFeature,
+    layer: QgsVectorLayer,
+    id_base_index: int,
+    bonus_data: str,
+) -> Tuple[QVariant | None, int, str]:
     """
     Set base index according to way type
     """
 
-    if way_type in vars_settings.base_index_dict:
-        base_index = vars_settings.base_index_dict[way_type]
-    else:
-        base_index = NULL
+    base_index = vars_settings.base_index_defaultdict[way_type]
 
     motor_vehicle_access = None  # TODO: set sensible default, idk if this works
 
@@ -33,29 +33,29 @@ def function_50(
         motor_vehicle_access = helper_functions.get_access(feature, 'motor_vehicle')
         if motor_vehicle_access in vars_settings.motor_vehicle_access_index_dict:
             base_index = vars_settings.motor_vehicle_access_index_dict[motor_vehicle_access]
-            data_bonus = helper_functions.add_delimited_value(data_bonus, 'motor vehicle restricted')
+            bonus_data = helper_functions.add_delimited_value(bonus_data, 'motor vehicle restricted')
     layer.changeAttributeValue(feature.id(), id_base_index, base_index)
 
-    return motor_vehicle_access, base_index
+    return motor_vehicle_access, base_index, bonus_data
 
 
 def function_51(
-    way_type,
-    proc_width,
-    proc_oneway,
-    feature,
-    layer,
-    motor_vehicle_access,
-    id_fac_width,
-    data_malus,
-    data_bonus,
-):
+    way_type: QVariant,
+    proc_width: QVariant | float | None,
+    proc_oneway: QVariant | str | None,
+    feature: QgsFeature,
+    layer: QgsVectorLayer,
+    motor_vehicle_access: QVariant | None,
+    id_fac_width: int,
+    malus_data: str,
+    bonus_data: str,
+) -> Tuple[float, str, str]:
     """
     Calculate width factor according to way type
     """
 
     calc_width = NULL
-    minimum_factor = 0
+    minimum_factor = 0.0
     # for dedicated ways for cycling
     if way_type not in ['bicycle road', 'shared road', 'shared traffic lane', 'shared bus lane', 'track or service'] or helper_functions.get_access(feature, 'motor_vehicle') == 'no':
         calc_width = proc_width
@@ -99,32 +99,32 @@ def function_51(
 
         fac_width = round(max(minimum_factor, fac_width), 3)
     else:
-        fac_width = NULL
+        fac_width = 0  # TODO: check if this is a correct fallback value
 
     layer.changeAttributeValue(feature.id(), id_fac_width, fac_width)
 
     if fac_width > 1:
-        data_bonus = helper_functions.add_delimited_value(data_bonus, 'wide width')
-    if fac_width and fac_width <= 0.5:
-        data_malus = helper_functions.add_delimited_value(data_malus, 'narrow width')
+        bonus_data = helper_functions.add_delimited_value(bonus_data, 'wide width')
+    elif fac_width <= 0.5:
+        malus_data = helper_functions.add_delimited_value(malus_data, 'narrow width')
 
-    return fac_width
+    return fac_width, bonus_data, malus_data
 
 
 def function_52(
-    proc_smoothness,
-    proc_surface,
-    feature,
-    id_fac_surface,
-    layer,
-    data_bonus,
-    data_malus,
-):
+    proc_smoothness: QVariant,
+    proc_surface: QVariant | str | None,
+    feature: QgsFeature,
+    id_fac_surface: int,
+    layer: QgsVectorLayer,
+    bonus_data: str,
+    malus_data: str,
+) -> Tuple[float, str, str]:
     """
     Calculate surface and smoothness factor
     """
 
-    fac_surface = 0  # TODO:check if default of 0 is correct
+    fac_surface = 0.0  # TODO:check if default of 0 is correct
     if proc_smoothness and proc_smoothness in vars_settings.smoothness_factor_dict:
         fac_surface = vars_settings.smoothness_factor_dict[proc_smoothness]
     elif proc_surface and proc_surface in vars_settings.surface_factor_dict:
@@ -133,27 +133,29 @@ def function_52(
     layer.changeAttributeValue(feature.id(), id_fac_surface, fac_surface)
 
     if fac_surface > 1:
-        data_bonus = helper_functions.add_delimited_value(data_bonus, 'excellent surface')
+        bonus_data = helper_functions.add_delimited_value(bonus_data, 'excellent surface')
     if fac_surface and fac_surface <= 0.5:
-        data_malus = helper_functions.add_delimited_value(data_malus, 'bad surface')
+        malus_data = helper_functions.add_delimited_value(malus_data, 'bad surface')
 
-    return fac_surface
+    return fac_surface, bonus_data, malus_data
 
 
 def function_53(
-    feature,
-):
+    feature: QgsFeature,
+) -> Tuple[float, float]:
     """
     Calculate highway (sidepath) and maxspeed factor
     """
 
     proc_highway = feature.attribute('proc_highway')
     proc_maxspeed = feature.attribute('proc_maxspeed')
-    fac_highway = 1
-    fac_maxspeed = 1
+    fac_highway = 1.0
+    fac_maxspeed = 1.0
     if proc_highway and proc_highway in vars_settings.highway_factor_dict:
         fac_highway = vars_settings.highway_factor_dict[proc_highway]
     if proc_maxspeed:
+        # TODO: the order of keys in a dictionary is not guaranteed! should they be ascending/descending?
+        # if so, sorting the resulting list of strings is better and if one >= maxspeed is found, you can break out of the loop
         for maxspeed in vars_settings.maxspeed_factor_dict.keys():
             if proc_maxspeed >= maxspeed:
                 fac_maxspeed = vars_settings.maxspeed_factor_dict[maxspeed]
@@ -162,43 +164,37 @@ def function_53(
 
 
 def function_54(
-    is_sidepath,
-    traffic_mode_left,
-    traffic_mode_right,
-    layer,
-    buffer_left,
-    buffer_right,
-    feature,
-    id_prot_level_separation_left,
-    id_prot_level_separation_right,
-    id_prot_level_buffer_left,
-    id_prot_level_buffer_right,
-    id_prot_level_left,
-    id_prot_level_right,
+    is_sidepath: QVariant,
+    traffic_mode_left: QVariant | str,
+    traffic_mode_right: QVariant | str,
+    layer: QgsVectorLayer,
+    buffer_left: QVariant | float,
+    buffer_right: QVariant | float,
+    feature: QgsFeature,
+    id_prot_level_separation_left: int,
+    id_prot_level_separation_right: int,
+    id_prot_level_buffer_left: int,
+    id_prot_level_buffer_right: int,
+    id_prot_level_left: int,
+    id_prot_level_right: int,
     separation_right: str,
     separation_left: str,
-):
+) -> float:
     """
     Calculate (physical) separation and buffer factor
     """
 
     if is_sidepath == 'yes' and (traffic_mode_left or traffic_mode_right):  # only for sidepath geometries
         # get the "strongest" separation value for each side and derive a protection level from that
-        prot_level_separation_left = 0
+        prot_level_separation_left = 0.0
         if separation_left:
-            separation_left = separation_left.split(';')
-            for separation in separation_left:
-                prot_level = vars_settings.separation_level_dict['ELSE']
-                if separation in vars_settings.separation_level_dict:
-                    prot_level = vars_settings.separation_level_dict[separation]
+            for separation in separation_left.split(';'):
+                prot_level = vars_settings.separation_level_defaultdict[separation]
                 prot_level_separation_left = max(prot_level_separation_left, prot_level)
-        prot_level_separation_right = 0
+        prot_level_separation_right = 0.0
         if separation_right:
-            separation_right = separation_right.split(';')
-            for separation in separation_right:
-                prot_level = vars_settings.separation_level_dict['ELSE']
-                if separation in vars_settings.separation_level_dict:
-                    prot_level = vars_settings.separation_level_dict[separation]
+            for separation in separation_right.split(';'):
+                prot_level = vars_settings.separation_level_defaultdict[separation]
                 prot_level_separation_right = max(prot_level_separation_right, prot_level)
 
         # derive protection level indicated by a buffer zone (a value from 0 to 1, half of the buffer width)
@@ -237,199 +233,199 @@ def function_54(
             fac_protection_level -= (fac_protection_level - 1) / 2
         fac_protection_level = round(fac_protection_level, 3)
     else:
-        fac_protection_level = NULL
+        fac_protection_level = 0.0
 
     return fac_protection_level
 
 
 def function_55(
-    base_index,
-    fac_width,
-    fac_surface,
-    layer,
-    feature,
-    id_fac_1,
-    id_fac_2,
-    id_fac_3,
-    id_fac_4,
-    way_type,
-    is_sidepath,
-    fac_highway,
-    fac_maxspeed,
-    cycleway,
-    cycleway_both,
-    cycleway_left,
-    cycleway_right,
-    traffic_mode_left,
-    traffic_mode_right,
-    buffer_left,
-    buffer_right,
-    bicycle,
-    data_malus,
-    data_bonus,
-    data_missing,
-):
+    base_index: int,
+    fac_width: float,
+    fac_surface: float,
+    layer: QgsVectorLayer,
+    feature: QgsFeature,
+    id_fac_1: int,
+    id_fac_2: int,
+    id_fac_3: int,
+    id_fac_4: int,
+    way_type: QVariant,
+    is_sidepath: QVariant,
+    fac_highway: float,
+    fac_maxspeed: float,
+    cycleway: QVariant,
+    cycleway_both: QVariant,
+    cycleway_left: QVariant,
+    cycleway_right: QVariant,
+    traffic_mode_left: QVariant | float,
+    traffic_mode_right: QVariant | float,
+    buffer_left: QVariant | float,
+    buffer_right: QVariant | float,
+    bicycle: QVariant,
+    malus_data: str,
+    bonus_data: str,
+    missing_data: str,
+) -> Tuple[int, str, str, str]:
     """
     Calculate index
     """
 
-    index = NULL
-    if base_index != NULL:
-        # factor 1: width and surface
-        # width and surface factors are weighted, so that low values have a stronger influence on the index
-        if fac_width and fac_surface:
-            # fac_1 = (fac_width + fac_surface) / 2  # formula without weight factors
-            weight_factor_width = max(1 - fac_width, 0) + 0.5  # max(1-x, 0) makes that only values below 1 are resulting in a stronger decrease of the index
-            weight_factor_surface = max(1 - fac_surface, 0) + 0.5
-            fac_1 = (weight_factor_width * fac_width + weight_factor_surface * fac_surface) / (weight_factor_width + weight_factor_surface)
-        elif fac_width:
-            fac_1 = fac_width
-        elif fac_surface:
-            fac_1 = fac_surface
-        else:
-            fac_1 = 1
-        layer.changeAttributeValue(feature.id(), id_fac_1, round(fac_1, 2))
+    if base_index == 0:
+        return 0, bonus_data, malus_data, missing_data
 
-        # factor 2: highway and maxspeed
-        # highway factor is weighted according to how close the bicycle traffic is to the motor traffic
-        weight = 1
-        if way_type in vars_settings.highway_factor_dict_weights:
-            weight = vars_settings.highway_factor_dict_weights[way_type]
-        # if a shared path isn't a sidepath of a road, highway factor remains 1 (has no influence on the index)
-        if way_type in ['shared path', 'segregated path', 'shared footway'] and is_sidepath != 'yes':
-            weight = 0
-        fac_2 = fac_highway * fac_maxspeed  # maxspeed and highway factor are combined in one highway factor
-        fac_2 = fac_2 + ((1 - fac_2) * (1 - weight))  # factor is weighted (see above) - low weights lead to a factor closer to 1
-        if not fac_2:
-            fac_2 = 1
-        layer.changeAttributeValue(feature.id(), id_fac_2, round(fac_2, 2))
+    # factor 1: width and surface
+    # width and surface factors are weighted, so that low values have a stronger influence on the index
+    if fac_width and fac_surface:
+        # fac_1 = (fac_width + fac_surface) / 2  # formula without weight factors
+        weight_factor_width = max(1 - fac_width, 0) + 0.5  # max(1-x, 0) makes that only values below 1 are resulting in a stronger decrease of the index
+        weight_factor_surface = max(1 - fac_surface, 0) + 0.5
+        fac_1 = (weight_factor_width * fac_width + weight_factor_surface * fac_surface) / (weight_factor_width + weight_factor_surface)
+    elif fac_width:
+        fac_1 = fac_width
+    elif fac_surface:
+        fac_1 = fac_surface
+    else:
+        fac_1 = 1
+    layer.changeAttributeValue(feature.id(), id_fac_1, round(fac_1, 2))
 
-        if weight >= 0.5:
-            if fac_2 > 1:
-                data_bonus = helper_functions.add_delimited_value(data_bonus, 'slow traffic')
-            if fac_highway <= 0.7:
-                data_malus = helper_functions.add_delimited_value(data_malus, 'along a major road')
-            if fac_maxspeed <= 0.7:
-                data_malus = helper_functions.add_delimited_value(data_malus, 'along a road with high speed limits')
+    # factor 2: highway and maxspeed
+    # highway factor is weighted according to how close the bicycle traffic is to the motor traffic
+    weight = vars_settings.highway_factor_weights_defaultdict[way_type]
 
-        # factor 3: separation and buffer
-        fac_3 = 1
-        layer.changeAttributeValue(feature.id(), id_fac_3, round(fac_3, 2))
+    # if a shared path isn't a sidepath of a road, highway factor remains 1 (has no influence on the index)
+    if way_type in ['shared path', 'segregated path', 'shared footway'] and is_sidepath != 'yes':
+        weight = 0
+    fac_2 = fac_highway * fac_maxspeed  # maxspeed and highway factor are combined in one highway factor
+    fac_2 = fac_2 + ((1 - fac_2) * (1 - weight))  # factor is weighted (see above) - low weights lead to a factor closer to 1
+    if not fac_2:
+        fac_2 = 1
+    layer.changeAttributeValue(feature.id(), id_fac_2, round(fac_2, 2))
 
-        # factor group 4: miscellaneous attributes can result in an other bonus or malus
-        fac_4 = 1
+    if weight >= 0.5:
+        if fac_2 > 1:
+            bonus_data = helper_functions.add_delimited_value(bonus_data, 'slow traffic')
+        if fac_highway <= 0.7:
+            malus_data = helper_functions.add_delimited_value(malus_data, 'along a major road')
+        if fac_maxspeed <= 0.7:
+            malus_data = helper_functions.add_delimited_value(malus_data, 'along a road with high speed limits')
 
-        # bonus for sharrows/cycleway=shared lane markings
-        if way_type in ['shared road', 'shared traffic lane']:
-            if cycleway == 'shared_lane' or cycleway_both == 'shared_lane' or cycleway_left == 'shared_lane' or cycleway_right == 'shared_lane':
-                fac_4 += 0.1
-                data_bonus = helper_functions.add_delimited_value(data_bonus, 'shared lane markings')
+    # factor 3: separation and buffer
+    fac_3 = 1.0
+    layer.changeAttributeValue(feature.id(), id_fac_3, round(fac_3, 2))
 
-        # bonus for surface colour on shared traffic ways
-        if 'cycle lane' in way_type or way_type in ['crossing', 'shared bus lane', 'link', 'bicycle road'] or (way_type in ['shared path', 'segregated path'] and is_sidepath == 'yes'):
-            surface_colour = feature.attribute('surface:colour')
-            if surface_colour and surface_colour not in ['no', 'none', 'grey', 'gray', 'black']:
-                if way_type == 'crossing':
-                    fac_4 += 0.15  # more bonus for colored crossings
-                else:
-                    fac_4 += 0.05
-                data_bonus = helper_functions.add_delimited_value(data_bonus, 'surface colour')
+    # factor group 4: miscellaneous attributes can result in an other bonus or malus
+    fac_4 = 1.0
 
-        # bonus for marked or signalled crossings
-        if way_type == 'crossing':
-            crossing = feature.attribute('crossing')
-            if not crossing:
-                data_missing = helper_functions.add_delimited_value(data_missing, 'crossing')
-            crossing_markings = feature.attribute('crossing:markings')
-            if not crossing_markings:
-                data_missing = helper_functions.add_delimited_value(data_missing, 'crossing_markings')
-            if crossing in ['traffic_signals']:
-                fac_4 += 0.2
-                data_bonus = helper_functions.add_delimited_value(data_bonus, 'signalled crossing')
-            elif crossing in ['marked', 'zebra'] or (crossing_markings and crossing_markings != 'no'):
-                fac_4 += 0.1
-                data_bonus = helper_functions.add_delimited_value(data_bonus, 'marked crossing')
+    # bonus for sharrows/cycleway=shared lane markings
+    if way_type in ['shared road', 'shared traffic lane']:
+        if cycleway == 'shared_lane' or cycleway_both == 'shared_lane' or cycleway_left == 'shared_lane' or cycleway_right == 'shared_lane':
+            fac_4 += 0.1
+            bonus_data = helper_functions.add_delimited_value(bonus_data, 'shared lane markings')
 
-        # malus for missing street light
-        lit = feature.attribute('lit')
-        if not lit:
-            data_missing = helper_functions.add_delimited_value(data_missing, 'lit')
-        if lit == 'no':
-            fac_4 -= 0.1
-            data_malus = helper_functions.add_delimited_value(data_malus, 'no street lighting')
+    # bonus for surface colour on shared traffic ways
+    if 'cycle lane' in way_type or way_type in ['crossing', 'shared bus lane', 'link', 'bicycle road'] or (way_type in ['shared path', 'segregated path'] and is_sidepath == 'yes'):
+        surface_colour = feature.attribute('surface:colour')
+        if surface_colour and surface_colour not in ['no', 'none', 'grey', 'gray', 'black']:
+            if way_type == 'crossing':
+                fac_4 += 0.15  # more bonus for colored crossings
+            else:
+                fac_4 += 0.05
+            bonus_data = helper_functions.add_delimited_value(bonus_data, 'surface colour')
 
-        # malus for cycle way along parking without buffer (danger of dooring)
-        # TODO: currently no information if parking is parallel parking - for this, a parking orientation lookup on the centerline is needed for separately mapped cycle ways
-        if ((traffic_mode_left == 'parking' and buffer_left and buffer_left < 1) or (traffic_mode_right == 'parking' and buffer_right and buffer_right < 1)) and ('cycle lane' in way_type or (way_type in ['cycle track', 'shared path', 'segregated path'] and is_sidepath == 'yes')):
-            # malus is 0 (buffer = 1m) .. 0.2 (buffer = 0m)
-            diff = 0
-            if traffic_mode_left == 'parking':
-                diff = abs(buffer_left - 1) / 5
-            if traffic_mode_right == 'parking':
-                diff = abs(buffer_right - 1) / 5
-            if traffic_mode_left == 'parking' and traffic_mode_right == 'parking':
-                diff = abs(((buffer_left + buffer_right) / 2) - 1) / 5
-            fac_4 -= diff
-            data_malus = helper_functions.add_delimited_value(data_malus, 'insufficient dooring buffer')
+    # bonus for marked or signalled crossings
+    if way_type == 'crossing':
+        crossing = feature.attribute('crossing')
+        if not crossing:
+            missing_data = helper_functions.add_delimited_value(missing_data, 'crossing')
+        crossing_markings = feature.attribute('crossing:markings')
+        if not crossing_markings:
+            missing_data = helper_functions.add_delimited_value(missing_data, 'crossing_markings')
+        if crossing in ['traffic_signals']:
+            fac_4 += 0.2
+            bonus_data = helper_functions.add_delimited_value(bonus_data, 'signalled crossing')
+        elif crossing in ['marked', 'zebra'] or (crossing_markings and crossing_markings != 'no'):
+            fac_4 += 0.1
+            bonus_data = helper_functions.add_delimited_value(bonus_data, 'marked crossing')
 
-        # malus if bicycle is only "permissive"
-        if bicycle == 'permissive':
-            fac_4 -= 0.2
-            data_malus = helper_functions.add_delimited_value(data_malus, 'cycling not intended')
+    # malus for missing street light
+    lit = feature.attribute('lit')
+    if not lit:
+        missing_data = helper_functions.add_delimited_value(missing_data, 'lit')
+    if lit == 'no':
+        fac_4 -= 0.1
+        malus_data = helper_functions.add_delimited_value(malus_data, 'no street lighting')
 
-        layer.changeAttributeValue(feature.id(), id_fac_4, round(fac_4, 2))
+    # malus for cycle way along parking without buffer (danger of dooring)
+    # TODO: currently no information if parking is parallel parking - for this, a parking orientation lookup on the centerline is needed for separately mapped cycle ways
+    if ((traffic_mode_left == 'parking' and buffer_left and buffer_left < 1) or (traffic_mode_right == 'parking' and buffer_right and buffer_right < 1)) and ('cycle lane' in way_type or (way_type in ['cycle track', 'shared path', 'segregated path'] and is_sidepath == 'yes')):
+        # malus is 0 (buffer = 1m) .. 0.2 (buffer = 0m)
+        diff = 0
+        if traffic_mode_left == 'parking':
+            diff = abs(buffer_left - 1) / 5
+        if traffic_mode_right == 'parking':
+            diff = abs(buffer_right - 1) / 5
+        if traffic_mode_left == 'parking' and traffic_mode_right == 'parking':
+            diff = abs(((buffer_left + buffer_right) / 2) - 1) / 5
+        fac_4 -= diff
+        malus_data = helper_functions.add_delimited_value(malus_data, 'insufficient dooring buffer')
 
-        index = base_index * fac_1 * fac_2 * fac_3 * fac_4
+    # malus if bicycle is only "permissive"
+    if bicycle == 'permissive':
+        fac_4 -= 0.2
+        malus_data = helper_functions.add_delimited_value(malus_data, 'cycling not intended')
 
-        index = max(min(100, index), 0)  # index should be between 0 and 100 in the end for pragmatic reasons
-        index = int(round(index))        # index is an int
+    layer.changeAttributeValue(feature.id(), id_fac_4, round(fac_4, 2))
 
-    return index
+    index = base_index * fac_1 * fac_2 * fac_3 * fac_4
+
+    index = max(min(100, index), 0)  # index should be between 0 and 100 in the end for pragmatic reasons
+    index = int(round(index))        # index is an int
+
+    return index, bonus_data, malus_data, missing_data
 
 
 def step_05(
-    layer,
-    id_base_index,
-    id_fac_width,
-    id_fac_surface,
-    id_fac_highway,
-    id_fac_maxspeed,
-    id_fac_1,
-    id_fac_2,
-    id_fac_3,
-    id_fac_4,
-    id_index,
-    id_data_missing,
+    layer: QgsVectorLayer,
+    id_base_index: int,
+    id_fac_width: int,
+    id_fac_surface: int,
+    id_fac_highway: int,
+    id_fac_maxspeed: int,
+    id_fac_1: int,
+    id_fac_2: int,
+    id_fac_3: int,
+    id_fac_4: int,
+    id_index: int,
+    id_data_missing: int,
     data_missing: str,
-    id_data_bonus,
-    id_data_malus,
-    id_data_incompleteness,
-    way_type,
-    feature,
-    proc_width,
-    proc_oneway,
-    proc_smoothness,
-    proc_surface,
-    is_sidepath,
-    cycleway,
-    cycleway_both,
-    cycleway_left,
-    cycleway_right,
-    traffic_mode_left,
-    traffic_mode_right,
-    buffer_left,
-    buffer_right,
-    bicycle,
-    id_fac_protection_level,
-    id_prot_level_separation_left,
-    id_prot_level_separation_right,
-    id_prot_level_buffer_left,
-    id_prot_level_buffer_right,
-    id_prot_level_left,
-    id_prot_level_right,
-    separation_right,
-    separation_left,
-):
+    id_data_bonus: int,
+    id_data_malus: int,
+    id_data_incompleteness: int,
+    way_type: QVariant,
+    feature: QgsFeature,
+    proc_width: QVariant | float | None,
+    proc_oneway: QVariant | str | None,
+    proc_smoothness: QVariant,
+    proc_surface: Optional[str | QVariant],
+    is_sidepath: QVariant,
+    cycleway: QVariant,
+    cycleway_both: QVariant,
+    cycleway_left: QVariant,
+    cycleway_right: QVariant,
+    traffic_mode_left: QVariant | str,
+    traffic_mode_right: QVariant | str,
+    buffer_left: QVariant | float,
+    buffer_right: QVariant | float,
+    bicycle: QVariant,
+    id_fac_protection_level: int,
+    id_prot_level_separation_left: int,
+    id_prot_level_separation_right: int,
+    id_prot_level_buffer_left: int,
+    id_prot_level_buffer_right: int,
+    id_prot_level_left: int,
+    id_prot_level_right: int,
+    separation_right: QVariant | str,
+    separation_left: QVariant | str,
+) -> None:
     """
     5: Calculate index and factors
     """
@@ -438,7 +434,7 @@ def step_05(
     data_bonus = ''
     data_malus = ''
 
-    motor_vehicle_access, base_index = function_50(
+    motor_vehicle_access, base_index, data_bonus = function_50(
         way_type,
         feature,
         layer,
@@ -446,7 +442,7 @@ def step_05(
         data_bonus,
     )
 
-    fac_width = function_51(
+    fac_width, data_bonus, data_malus = function_51(
         way_type,
         proc_width,
         proc_oneway,
@@ -458,7 +454,7 @@ def step_05(
         data_bonus,
     )
 
-    fac_surface = function_52(
+    fac_surface, data_bonus, data_malus = function_52(
         proc_smoothness,
         proc_surface,
         feature,
@@ -493,7 +489,7 @@ def step_05(
     #
     # layer.changeAttributeValue(feature.id(), id_fac_protection_level, fac_protection_level)
 
-    index = function_55(
+    index, data_bonus, data_malus, data_missing = function_55(
         base_index,
         fac_width,
         fac_surface,
@@ -527,9 +523,9 @@ def step_05(
     layer.changeAttributeValue(feature.id(), id_data_malus, data_malus)
 
     # derive a data completeness number
-    data_incompleteness = 0
+    data_incompleteness = 0.0
     missing_values = data_missing.split(';')
     for value in missing_values:
-        if value in vars_settings.data_incompleteness_dict:
-            data_incompleteness += vars_settings.data_incompleteness_dict[value]
+        if value in vars_settings.data_incompleteness_defaultdict:
+            data_incompleteness += vars_settings.data_incompleteness_defaultdict[value]
     layer.changeAttributeValue(feature.id(), id_data_incompleteness, data_incompleteness)

@@ -1,7 +1,7 @@
 import imp
 import time
 
-from qgis.core import NULL, edit
+from qgis.core import NULL, QgsVectorLayer, edit  # type: ignore
 
 import helper_functions
 import vars_settings
@@ -11,9 +11,9 @@ imp.reload(helper_functions)
 
 
 def step_03(
-    layer,
-    id_way_type,
-):
+    layer: QgsVectorLayer,
+    id_way_type: int,
+) -> None:
     """
     3: Determine way type for every way segment
     """
@@ -89,7 +89,7 @@ def step_03(
 
                             elif is_sidepath == 'yes':
                                 separation_motor_vehicle = helper_functions.derive_separation(feature, 'motor_vehicle')
-                                if separation_motor_vehicle not in [NULL, 'no', 'none']:
+                                if separation_motor_vehicle not in [None, NULL, 'no', 'none']:
                                     if 'kerb' in separation_motor_vehicle or 'tree_row' in separation_motor_vehicle:
                                         way_type = 'cycle track'
                                     else:

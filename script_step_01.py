@@ -1,8 +1,10 @@
 import imp
 import time
+from collections import defaultdict
+from typing import DefaultDict, Dict, TypedDict, Union
 
-import qgis.processing as processing
-from qgis.core import (
+import qgis.processing as processing  # type: ignore
+from qgis.core import (  # type: ignore
     NULL, QgsFeature, QgsProcessingFeatureSourceDefinition, QgsProject,
     QgsVectorLayer, edit
 )
@@ -20,7 +22,7 @@ def step_01(
     id_proc_highway: int,
     id_proc_maxspeed: int,
     id_proc_sidepath: int,
-):
+) -> None:
     """
     Check paths whether they are sidepath (a path along a road)
     """
@@ -88,18 +90,28 @@ def step_01(
     print(time.strftime('%H:%M:%S', time.localtime()), '   Check for adjacent roads...')
 
     # for all check points: Save nearby road id's, names and highway classes in a dict
-    sidepath_dict = {}
+    class typed_dict_of_int_or_defaultdict_of_int_or_float(TypedDict):
+        checks: int
+        id: DefaultDict[QVariant, int]
+        highway: DefaultDict[QVariant, int]
+        name: DefaultDict[QVariant, int]
+        maxspeed: DefaultDict[QVariant, float]
+
+        # Dict[str, Union[int, DefaultDict[QVariant, Union[int, float]]]]
+
+    sidepath_dict: Dict[QVariant, typed_dict_of_int_or_defaultdict_of_int_or_float] = {}
     for buffer in layer_path_points_buffers.getFeatures():
-        buffer_id = buffer.attribute('id')
+        buffer_id: QVariant = buffer.attribute('id')
         if buffer_id not in sidepath_dict:
-            sidepath_dict[buffer_id] = {}
-            sidepath_dict[buffer_id]['checks'] = 1
-            sidepath_dict[buffer_id]['id'] = {}
-            sidepath_dict[buffer_id]['highway'] = {}
-            sidepath_dict[buffer_id]['name'] = {}
-            sidepath_dict[buffer_id]['maxspeed'] = {}
+            sidepath_dict[buffer_id] = {
+                'checks': 1,
+                'id': defaultdict(lambda: 1),
+                'highway': defaultdict(lambda: 1),
+                'name': defaultdict(lambda: 1),
+                'maxspeed': defaultdict(lambda: -1.0),
+            }
         else:
-            sidepath_dict[buffer_id]['checks'] += 1
+            sidepath_dict[buffer_id]['checks'] += 1  # type: ignore
         layer_path_points_buffers.removeSelection()
         layer_path_points_buffers.select(buffer.id())
         processing.run(
@@ -115,17 +127,17 @@ def step_01(
         id_list = []
         highway_list = []
         name_list = []
-        maxspeed_dict = {}
+        maxspeed_dict: Dict[QVariant, Union[QVariant, float]] = {}
         road: QgsFeature
         for road in layer_roads.selectedFeatures():
             if buffer.attribute('layer') != road.attribute('layer'):
                 # only consider geometries in the same layer
                 continue
 
-            road_id = road.attribute('id')
-            road_highway = road.attribute('highway')
-            road_name = road.attribute('name')
-            road_maxspeed = helper_functions.cast_to_float(road.attribute('maxspeed'))
+            road_id: QVariant = road.attribute('id')
+            road_highway: QVariant = road.attribute('highway')
+            road_name: QVariant = road.attribute('name')
+            road_maxspeed = helper_functions.cast_to_float(road.attribute('maxspeed'))  # TODO: check if road actually has the attribute maxspeed?!
 
             if road_id not in id_list:
                 id_list.append(road_id)
@@ -137,22 +149,13 @@ def step_01(
                 name_list.append(road_name)
 
         for road_id in id_list:
-            if road_id in sidepath_dict[buffer_id]['id']:
-                sidepath_dict[buffer_id]['id'][road_id] += 1
-            else:
-                sidepath_dict[buffer_id]['id'][road_id] = 1
+            sidepath_dict[buffer_id]['id'][road_id] += 1
 
         for road_highway in highway_list:
-            if road_highway in sidepath_dict[buffer_id]['highway']:
-                sidepath_dict[buffer_id]['highway'][road_highway] += 1
-            else:
-                sidepath_dict[buffer_id]['highway'][road_highway] = 1
+            sidepath_dict[buffer_id]['highway'][road_highway] += 1
 
         for road_name in name_list:
-            if road_name in sidepath_dict[buffer_id]['name']:
-                sidepath_dict[buffer_id]['name'][road_name] += 1
-            else:
-                sidepath_dict[buffer_id]['name'][road_name] = 1
+            sidepath_dict[buffer_id]['name'][road_name] += 1
 
         for highway in maxspeed_dict.keys():
             if highway not in sidepath_dict[buffer_id]['maxspeed'] or sidepath_dict[buffer_id]['maxspeed'][highway] < maxspeed_dict[highway]:
