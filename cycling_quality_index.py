@@ -15,8 +15,7 @@ import script_main
 
 imp.reload(script_main)
 
-# project directory
-project_dir = pathlib.Path(__file__).parents[0]  # project directory
+project_dir = pathlib.Path(__file__).parents[0]
 dir_input = project_dir / 'data/way_import.geojson'
 dir_output = project_dir / 'data/cycling_quality_index.geojson'
 

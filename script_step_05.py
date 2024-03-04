@@ -4,7 +4,6 @@ from typing import Optional, Tuple
 
 from qgis.core import NULL  # type: ignore
 from qgis.core import QgsFeature, QgsVectorLayer
-from qgis.PyQt.QtCore import QVariant  # type: ignore
 
 import helper_functions
 import vars_settings
@@ -14,12 +13,12 @@ imp.reload(helper_functions)
 
 
 def function_50(
-    way_type: QVariant,
+    way_type: str,
     feature: QgsFeature,
     layer: QgsVectorLayer,
     id_base_index: int,
     bonus_data: str,
-) -> Tuple[QVariant | None, int, str]:
+) -> Tuple[Optional[str], int, str]:
     """
     Set base index according to way type
     """
@@ -40,12 +39,12 @@ def function_50(
 
 
 def function_51(
-    way_type: QVariant,
-    proc_width: QVariant | float | None,
-    proc_oneway: QVariant | str | None,
+    way_type: str,
+    proc_width: Optional[float],
+    proc_oneway: str,
     feature: QgsFeature,
     layer: QgsVectorLayer,
-    motor_vehicle_access: QVariant | None,
+    motor_vehicle_access: Optional[str],
     id_fac_width: int,
     malus_data: str,
     bonus_data: str,
@@ -82,6 +81,8 @@ def function_51(
                 # on motor vehicle roads, optimum width is 2m for a car + 1m for bicycle + 1.5m safety distance -> exactly 2m more than the optimum width on cycleways.
                 # Simply subtract 2m from the processed width to get a comparable width value that can be used with the following width factor formula
 
+    fac_width: float = 0.0  # TODO: check if this is a correct fallback value
+
     # Calculate width factor (logistic regression)
     if calc_width:
         # factor should not be negative and not 0, since the following logistic regression isn't working for 0
@@ -98,12 +99,10 @@ def function_51(
             fac_width = fac_width + ((1 - fac_width) / 2)
 
         fac_width = round(max(minimum_factor, fac_width), 3)
-    else:
-        fac_width = 0  # TODO: check if this is a correct fallback value
 
     layer.changeAttributeValue(feature.id(), id_fac_width, fac_width)
 
-    if fac_width > 1:
+    if fac_width > 1.0:
         bonus_data = helper_functions.add_delimited_value(bonus_data, 'wide width')
     elif fac_width <= 0.5:
         malus_data = helper_functions.add_delimited_value(malus_data, 'narrow width')
@@ -112,8 +111,8 @@ def function_51(
 
 
 def function_52(
-    proc_smoothness: QVariant,
-    proc_surface: QVariant | str | None,
+    proc_smoothness: Optional[str],
+    proc_surface: Optional[str],
     feature: QgsFeature,
     id_fac_surface: int,
     layer: QgsVectorLayer,
@@ -124,7 +123,7 @@ def function_52(
     Calculate surface and smoothness factor
     """
 
-    fac_surface = 0.0  # TODO:check if default of 0 is correct
+    fac_surface: float = 0.0  # TODO:check if default of 0 is correct
     if proc_smoothness and proc_smoothness in vars_settings.smoothness_factor_dict:
         fac_surface = vars_settings.smoothness_factor_dict[proc_smoothness]
     elif proc_surface and proc_surface in vars_settings.surface_factor_dict:
@@ -147,12 +146,11 @@ def function_53(
     Calculate highway (sidepath) and maxspeed factor
     """
 
-    proc_highway = feature.attribute('proc_highway')
-    proc_maxspeed = feature.attribute('proc_maxspeed')
-    fac_highway = 1.0
+    proc_maxspeed: Optional[int] = feature.attribute('proc_maxspeed')
+
     fac_maxspeed = 1.0
-    if proc_highway and proc_highway in vars_settings.highway_factor_dict:
-        fac_highway = vars_settings.highway_factor_dict[proc_highway]
+    fac_highway = vars_settings.highway_factor_dict.get(feature.attribute('proc_highway'), 1.0)
+
     if proc_maxspeed:
         # TODO: the order of keys in a dictionary is not guaranteed! should they be ascending/descending?
         # if so, sorting the resulting list of strings is better and if one >= maxspeed is found, you can break out of the loop
@@ -164,12 +162,12 @@ def function_53(
 
 
 def function_54(
-    is_sidepath: QVariant,
-    traffic_mode_left: QVariant | str,
-    traffic_mode_right: QVariant | str,
+    is_sidepath: Optional[str],
+    traffic_mode_left: Optional[str],
+    traffic_mode_right: Optional[str],
     layer: QgsVectorLayer,
-    buffer_left: QVariant | float,
-    buffer_right: QVariant | float,
+    buffer_left: Optional[float],
+    buffer_right: Optional[float],
     feature: QgsFeature,
     id_prot_level_separation_left: int,
     id_prot_level_separation_right: int,
@@ -184,58 +182,61 @@ def function_54(
     Calculate (physical) separation and buffer factor
     """
 
-    if is_sidepath == 'yes' and (traffic_mode_left or traffic_mode_right):  # only for sidepath geometries
-        # get the "strongest" separation value for each side and derive a protection level from that
-        prot_level_separation_left = 0.0
-        if separation_left:
-            for separation in separation_left.split(';'):
-                prot_level = vars_settings.separation_level_defaultdict[separation]
-                prot_level_separation_left = max(prot_level_separation_left, prot_level)
-        prot_level_separation_right = 0.0
-        if separation_right:
-            for separation in separation_right.split(';'):
-                prot_level = vars_settings.separation_level_defaultdict[separation]
-                prot_level_separation_right = max(prot_level_separation_right, prot_level)
+    # not (is_sidepath == 'yes' and (traffic_mode_left or traffic_mode_right))
+    # is_sidepath != 'yes' or not (traffic_mode_left or traffic_mode_right))
+    # is_sidepath != 'yes' or (not traffic_mode_left and not traffic_mode_right))
+    if is_sidepath != 'yes' or (not traffic_mode_left and not traffic_mode_right):  # only for sidepath geometries
+        return 0.0
 
-        # derive protection level indicated by a buffer zone (a value from 0 to 1, half of the buffer width)
-        prot_level_buffer_left = min(buffer_left / 2, 1)
-        prot_level_buffer_right = min(buffer_right / 2, 1)
+    # get the "strongest" separation value for each side and derive a protection level from that
+    prot_level_separation_left = 0.0
+    if separation_left:
+        for separation in separation_left.split(';'):
+            prot_level = vars_settings.separation_level_defaultdict[separation]
+            prot_level_separation_left = max(prot_level_separation_left, prot_level)
+    prot_level_separation_right = 0.0
+    if separation_right:
+        for separation in separation_right.split(';'):
+            prot_level = vars_settings.separation_level_defaultdict[separation]
+            prot_level_separation_right = max(prot_level_separation_right, prot_level)
 
-        # derive a total protection level per side (separation has a stronger weight, because it results in more (perception of) safeness)
-        prot_level_left = prot_level_separation_left * 0.67 + prot_level_buffer_left * 0.33
-        prot_level_right = prot_level_separation_right * 0.67 + prot_level_buffer_right * 0.33
+    # derive protection level indicated by a buffer zone (a value from 0 to 1, half of the buffer width)
+    prot_level_buffer_left: float = min(buffer_left / 2, 1)
+    prot_level_buffer_right = min(buffer_right / 2, 1)
 
-        layer.changeAttributeValue(feature.id(), id_prot_level_separation_left, round(prot_level_separation_left, 3))
-        layer.changeAttributeValue(feature.id(), id_prot_level_separation_right, round(prot_level_separation_right, 3))
-        layer.changeAttributeValue(feature.id(), id_prot_level_buffer_left, round(prot_level_buffer_left, 3))
-        layer.changeAttributeValue(feature.id(), id_prot_level_buffer_right, round(prot_level_buffer_right, 3))
-        layer.changeAttributeValue(feature.id(), id_prot_level_left, round(prot_level_left, 3))
-        layer.changeAttributeValue(feature.id(), id_prot_level_right, round(prot_level_right, 3))
+    # derive a total protection level per side (separation has a stronger weight, because it results in more (perception of) safeness)
+    prot_level_left = (prot_level_separation_left * 2 + prot_level_buffer_left) / 3
+    prot_level_right = (prot_level_separation_right * 2 + prot_level_buffer_right) / 3
 
-        # derive a factor from that protection level values (0.9: no protection, 1.4: high protection)
-        # if there is motor vehicle traffic on one side and foot (or bicycle) traffic on the other, the factor is composed of 75% motor vehicle side and 25% of the other side.
-        if traffic_mode_left in ['motor_vehicle', 'psv', 'parking'] and traffic_mode_right in ['foot', 'bicycle']:
-            prot_level = prot_level_left * 0.75 + prot_level_right * 0.25
-        if traffic_mode_left in ['foot', 'bicycle'] and traffic_mode_right in ['motor_vehicle', 'psv', 'parking']:
-            prot_level = prot_level_left * 0.25 + prot_level_right * 0.75
-        # same traffic mode on both sides: protection level is the average of both sides levels
-        if (traffic_mode_left in ['motor_vehicle', 'psv', 'parking'] and traffic_mode_right in ['motor_vehicle', 'psv', 'parking']) or (traffic_mode_left in ['foot', 'bicycle'] and traffic_mode_right in ['foot', 'bicycle']):
-            prot_level = (prot_level_left + prot_level_right) / 2
-        # no traffic on a side: only the other side with traffic counts.
-        if traffic_mode_right == 'no' and traffic_mode_left != 'no':
-            prot_level = prot_level_left
-        if traffic_mode_left == 'no' and traffic_mode_right != 'no':
-            prot_level = prot_level_right
+    layer.changeAttributeValue(feature.id(), id_prot_level_separation_left, round(prot_level_separation_left, 3))
+    layer.changeAttributeValue(feature.id(), id_prot_level_separation_right, round(prot_level_separation_right, 3))
+    layer.changeAttributeValue(feature.id(), id_prot_level_buffer_left, round(prot_level_buffer_left, 3))
+    layer.changeAttributeValue(feature.id(), id_prot_level_buffer_right, round(prot_level_buffer_right, 3))
+    layer.changeAttributeValue(feature.id(), id_prot_level_left, round(prot_level_left, 3))
+    layer.changeAttributeValue(feature.id(), id_prot_level_right, round(prot_level_right, 3))
 
-        fac_protection_level = 0.9 + prot_level / 2
-        # no motor vehicle traffic? Factor is only half weighted
-        if traffic_mode_left not in ['motor_vehicle', 'psv', 'parking'] and traffic_mode_right not in ['motor_vehicle', 'psv', 'parking']:
-            fac_protection_level -= (fac_protection_level - 1) / 2
-        fac_protection_level = round(fac_protection_level, 3)
-    else:
-        fac_protection_level = 0.0
+    # derive a factor from that protection level values (0.9: no protection, 1.4: high protection)
+    # if there is motor vehicle traffic on one side and foot (or bicycle) traffic on the other, the factor is composed of 75% motor vehicle side and 25% of the other side.
+    if traffic_mode_left in ['motor_vehicle', 'psv', 'parking'] and traffic_mode_right in ['foot', 'bicycle']:
+        prot_level = prot_level_left * 0.75 + prot_level_right * 0.25
+    if traffic_mode_left in ['foot', 'bicycle'] and traffic_mode_right in ['motor_vehicle', 'psv', 'parking']:
+        prot_level = prot_level_left * 0.25 + prot_level_right * 0.75
+    # same traffic mode on both sides: protection level is the average of both sides levels
+    if (traffic_mode_left in ['motor_vehicle', 'psv', 'parking'] and traffic_mode_right in ['motor_vehicle', 'psv', 'parking']) or (traffic_mode_left in ['foot', 'bicycle'] and traffic_mode_right in ['foot', 'bicycle']):
+        prot_level = (prot_level_left + prot_level_right) / 2
+    # no traffic on a side: only the other side with traffic counts.
+    if traffic_mode_right == 'no' and traffic_mode_left != 'no':
+        prot_level = prot_level_left
+    if traffic_mode_left == 'no' and traffic_mode_right != 'no':
+        prot_level = prot_level_right
 
-    return fac_protection_level
+    fac_protection_level = 0.9 + prot_level / 2
+    # no motor vehicle traffic? Factor is only half weighted
+    if traffic_mode_left not in ['motor_vehicle', 'psv', 'parking'] and traffic_mode_right not in ['motor_vehicle', 'psv', 'parking']:
+        fac_protection_level /= 2
+        fac_protection_level += 0.5
+
+    return round(fac_protection_level, 3)
 
 
 def function_55(
@@ -248,19 +249,19 @@ def function_55(
     id_fac_2: int,
     id_fac_3: int,
     id_fac_4: int,
-    way_type: QVariant,
-    is_sidepath: QVariant,
+    way_type: str,
+    is_sidepath: Optional[str],
     fac_highway: float,
     fac_maxspeed: float,
-    cycleway: QVariant,
-    cycleway_both: QVariant,
-    cycleway_left: QVariant,
-    cycleway_right: QVariant,
-    traffic_mode_left: QVariant | float,
-    traffic_mode_right: QVariant | float,
-    buffer_left: QVariant | float,
-    buffer_right: QVariant | float,
-    bicycle: QVariant,
+    cycleway: Optional[str],
+    cycleway_both: Optional[str],
+    cycleway_left: Optional[str],
+    cycleway_right: Optional[str],
+    traffic_mode_left: Optional[str],
+    traffic_mode_right: Optional[str],
+    buffer_left: Optional[float],
+    buffer_right: Optional[float],
+    bicycle: Optional[str],
     malus_data: str,
     bonus_data: str,
     missing_data: str,
@@ -284,7 +285,7 @@ def function_55(
     elif fac_surface:
         fac_1 = fac_surface
     else:
-        fac_1 = 1
+        fac_1 = 1.0
     layer.changeAttributeValue(feature.id(), id_fac_1, round(fac_1, 2))
 
     # factor 2: highway and maxspeed
@@ -297,7 +298,7 @@ def function_55(
     fac_2 = fac_highway * fac_maxspeed  # maxspeed and highway factor are combined in one highway factor
     fac_2 = fac_2 + ((1 - fac_2) * (1 - weight))  # factor is weighted (see above) - low weights lead to a factor closer to 1
     if not fac_2:
-        fac_2 = 1
+        fac_2 = 1.0
     layer.changeAttributeValue(feature.id(), id_fac_2, round(fac_2, 2))
 
     if weight >= 0.5:
@@ -400,22 +401,22 @@ def step_05(
     id_data_bonus: int,
     id_data_malus: int,
     id_data_incompleteness: int,
-    way_type: QVariant,
+    way_type: str,
     feature: QgsFeature,
-    proc_width: QVariant | float | None,
-    proc_oneway: QVariant | str | None,
-    proc_smoothness: QVariant,
-    proc_surface: Optional[str | QVariant],
-    is_sidepath: QVariant,
-    cycleway: QVariant,
-    cycleway_both: QVariant,
-    cycleway_left: QVariant,
-    cycleway_right: QVariant,
-    traffic_mode_left: QVariant | str,
-    traffic_mode_right: QVariant | str,
-    buffer_left: QVariant | float,
-    buffer_right: QVariant | float,
-    bicycle: QVariant,
+    proc_width: Optional[float],
+    proc_oneway: str,
+    proc_smoothness: Optional[str],
+    proc_surface: Optional[str],
+    is_sidepath: Optional[str],
+    cycleway: Optional[str],
+    cycleway_both: Optional[str],
+    cycleway_left: Optional[str],
+    cycleway_right: Optional[str],
+    traffic_mode_left: Optional[str],
+    traffic_mode_right: Optional[str],
+    buffer_left: Optional[float],
+    buffer_right: Optional[float],
+    bicycle: Optional[str],
     id_fac_protection_level: int,
     id_prot_level_separation_left: int,
     id_prot_level_separation_right: int,
@@ -423,8 +424,8 @@ def step_05(
     id_prot_level_buffer_right: int,
     id_prot_level_left: int,
     id_prot_level_right: int,
-    separation_right: QVariant | str,
-    separation_left: QVariant | str,
+    separation_right: Optional[str],
+    separation_left: Optional[str],
 ) -> None:
     """
     5: Calculate index and factors
@@ -523,9 +524,6 @@ def step_05(
     layer.changeAttributeValue(feature.id(), id_data_malus, data_malus)
 
     # derive a data completeness number
-    data_incompleteness = 0.0
-    missing_values = data_missing.split(';')
-    for value in missing_values:
-        if value in vars_settings.data_incompleteness_defaultdict:
-            data_incompleteness += vars_settings.data_incompleteness_defaultdict[value]
+    data_incompleteness = sum(vars_settings.data_incompleteness_defaultdict[value] for value in data_missing.split(';'))
+
     layer.changeAttributeValue(feature.id(), id_data_incompleteness, data_incompleteness)

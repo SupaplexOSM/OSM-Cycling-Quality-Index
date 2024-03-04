@@ -4,7 +4,7 @@ functions used in multiple files to be imported
 
 from typing import List, Optional
 
-from qgis.core import NULL, QgsFeature  # type: ignore
+from qgis.core import NULL, QgsFeature, QgsVariantUtils  # type: ignore
 from qgis.PyQt.QtCore import QVariant  # type: ignore
 
 debug_warning_counter__derive_attribute = 0
@@ -25,6 +25,9 @@ def derive_attribute(feature: QgsFeature, attribute_name: str, way_type: str, si
     if attribute is None:
         return None
 
+    if QgsVariantUtils.isNull(attribute):
+        return None
+
     try:
         if vartype is int:
             return int(attribute)
@@ -43,16 +46,16 @@ def derive_attribute(feature: QgsFeature, attribute_name: str, way_type: str, si
         return None
 
 
-def derive_separation(feature: QgsFeature, traffic_mode: str) -> QVariant | None:
+def derive_separation(feature: QgsFeature, traffic_mode: str) -> Optional[str]:
     """
     derive separation on the side of a specific traffic mode (e.g. foot traffic usually on the right side)
     """
 
     separation = None
-    separation_left = feature.attribute('separation:left')
-    separation_right = feature.attribute('separation:right')
-    traffic_mode_left = feature.attribute('traffic_mode:left')
-    traffic_mode_right = feature.attribute('traffic_mode:right')
+    separation_left: Optional[str] = feature.attribute('separation:left')
+    separation_right: Optional[str] = feature.attribute('separation:right')
+    traffic_mode_left: Optional[str] = feature.attribute('traffic_mode:left')
+    traffic_mode_right: Optional[str] = feature.attribute('traffic_mode:right')
 
     # default for the right side: adjacent foot traffic
     if traffic_mode == 'foot':
@@ -73,7 +76,7 @@ def derive_separation(feature: QgsFeature, traffic_mode: str) -> QVariant | None
     return separation
 
 
-def get_access(feature: QgsFeature, access_key: str) -> QVariant | None:
+def get_access(feature: QgsFeature, access_key: str) -> Optional[str]:
     """
     interpret access tags of a feature to get the access value for a specific traffic mode
     """
@@ -88,9 +91,11 @@ def get_access(feature: QgsFeature, access_key: str) -> QVariant | None:
         'psv': ['motor_vehicle', 'vehicle', 'access'],
         'bus': ['psv', 'motor_vehicle', 'vehicle', 'access']
     }
+
     access_value = None
     if feature.fields().indexOf(access_key) != -1:
         access_value = feature.attribute(access_key)
+
     if not access_value and access_key in access_dict:
         for i in range(len(access_dict[access_key])):
             if not access_value and feature.fields().indexOf(access_dict[access_key][i]) != -1:
@@ -99,8 +104,29 @@ def get_access(feature: QgsFeature, access_key: str) -> QVariant | None:
     return access_value
 
 
-def cast_to_float(value: QVariant | int | float) -> QVariant | float:
-    # return a value as a float
+def cast_to_float(value: QVariant | int | float) -> Optional[float]:
+    """
+    return a value as a float
+    """
+
+    if QgsVariantUtils.isNull(value):
+        return NULL  # type: ignore  # TODO: change to None, if possible
+
+    if value == "walk":
+        return NULL  # type: ignore  # TODO: change to None, if possible
+
+    if value == "no":
+        return None
+
+    if value == "yes":
+        return None
+
+    if value == "":
+        return None
+
+    # if type(value) is str:
+    #     raise ValueError(f"{value=} of type str is probably not converttile to float?")
+
     try:
         return float(value)
     except (TypeError, ValueError) as e:
@@ -110,7 +136,7 @@ def cast_to_float(value: QVariant | int | float) -> QVariant | float:
             debug_warning_counter__cast_to_float += 1
             if debug_warning_counter__cast_to_float >= 5:
                 print("cast_to_float: this was the last warning, future warnings will be muted!")
-        return NULL
+        return NULL  # type: ignore  # TODO: change to None, if possible
 
 
 def get_weakest_surface_value(values: List[str]) -> Optional[str]:

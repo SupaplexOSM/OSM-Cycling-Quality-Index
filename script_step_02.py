@@ -1,14 +1,13 @@
 import imp
 import time
 from collections import defaultdict
-from typing import DefaultDict
+from typing import DefaultDict, Optional
 
 import qgis.processing as processing  # type: ignore
 from qgis.core import (  # type: ignore
     NULL, QgsProcessingFeatureSourceDefinition, QgsProperty, QgsVectorLayer,
     edit
 )
-from qgis.PyQt.QtCore import QVariant  # type: ignore
 
 import helper_functions
 import vars_settings
@@ -39,8 +38,8 @@ def step_02(
     with edit(layer):
         for feature in layer.getFeatures():
             highway = feature.attribute('highway')
-            cycleway: QVariant = feature.attribute('cycleway')
-            cycleway_both: QVariant = feature.attribute('cycleway:both')
+            cycleway: Optional[str] = feature.attribute('cycleway')
+            cycleway_both: Optional[str] = feature.attribute('cycleway:both')
             cycleway_left = feature.attribute('cycleway:left')
             cycleway_right = feature.attribute('cycleway:right')
             sidewalk_bicycle = feature.attribute('sidewalk:bicycle')
@@ -49,7 +48,6 @@ def step_02(
             sidewalk_right_bicycle = feature.attribute('sidewalk:right:bicycle')
 
             offset_cycleway_left = offset_cycleway_right = offset_sidewalk_left = offset_sidewalk_right = 0.0
-            side = NULL
 
             # TODO: more precise offset calculation taking "parking:", "placement", "width:lanes" and other Tags into account
             if vars_settings.offset_distance == 'realistic':
@@ -69,7 +67,7 @@ def step_02(
                         offset_cycleway_left = width / 2
                     # option 2: static offset as defined in the variable
                     else:
-                        offset_cycleway_left = helper_functions.cast_to_float(vars_settings.offset_distance)
+                        offset_cycleway_left = float(vars_settings.offset_distance)
                     layer.changeAttributeValue(feature.id(), id_offset_cycleway_left, offset_cycleway_left)
 
                 # offset for right cycleways
@@ -77,7 +75,7 @@ def step_02(
                     if vars_settings.offset_distance == 'realistic':
                         offset_cycleway_right = width / 2
                     else:
-                        offset_cycleway_right = helper_functions.cast_to_float(vars_settings.offset_distance)
+                        offset_cycleway_right = float(vars_settings.offset_distance)
                     layer.changeAttributeValue(feature.id(), id_offset_cycleway_right, offset_cycleway_right)
 
             # offset for shared footways
@@ -96,7 +94,7 @@ def step_02(
                 if vars_settings.offset_distance == 'realistic':
                     offset_sidewalk_right = width / 2 + 2
                 else:
-                    offset_sidewalk_right = helper_functions.cast_to_float(vars_settings.offset_distance)
+                    offset_sidewalk_right = float(vars_settings.offset_distance)
                 layer.changeAttributeValue(feature.id(), id_offset_sidewalk_right, offset_sidewalk_right)
 
         processing.run(

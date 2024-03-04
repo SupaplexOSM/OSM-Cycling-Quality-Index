@@ -1,14 +1,13 @@
 import imp
 import time
 from collections import defaultdict
-from typing import DefaultDict, Dict, TypedDict, Union
+from typing import DefaultDict, Dict, Optional, TypedDict
 
 import qgis.processing as processing  # type: ignore
 from qgis.core import (  # type: ignore
     NULL, QgsFeature, QgsProcessingFeatureSourceDefinition, QgsProject,
     QgsVectorLayer, edit
 )
-from qgis.PyQt.QtCore import QVariant  # type: ignore
 
 import helper_functions
 import vars_settings
@@ -92,16 +91,14 @@ def step_01(
     # for all check points: Save nearby road id's, names and highway classes in a dict
     class typed_dict_of_int_or_defaultdict_of_int_or_float(TypedDict):
         checks: int
-        id: DefaultDict[QVariant, int]
-        highway: DefaultDict[QVariant, int]
-        name: DefaultDict[QVariant, int]
-        maxspeed: DefaultDict[QVariant, float]
+        id: DefaultDict[int, int]
+        highway: DefaultDict[Optional[str], int]
+        name: DefaultDict[Optional[str], int]
+        maxspeed: DefaultDict[Optional[str], float]
 
-        # Dict[str, Union[int, DefaultDict[QVariant, Union[int, float]]]]
-
-    sidepath_dict: Dict[QVariant, typed_dict_of_int_or_defaultdict_of_int_or_float] = {}
+    sidepath_dict: Dict[int, typed_dict_of_int_or_defaultdict_of_int_or_float] = {}
     for buffer in layer_path_points_buffers.getFeatures():
-        buffer_id: QVariant = buffer.attribute('id')
+        buffer_id: int = buffer.attribute('id')
         if buffer_id not in sidepath_dict:
             sidepath_dict[buffer_id] = {
                 'checks': 1,
@@ -127,17 +124,19 @@ def step_01(
         id_list = []
         highway_list = []
         name_list = []
-        maxspeed_dict: Dict[QVariant, Union[QVariant, float]] = {}
+        maxspeed_dict: Dict[str, float] = {}
         road: QgsFeature
         for road in layer_roads.selectedFeatures():
             if buffer.attribute('layer') != road.attribute('layer'):
                 # only consider geometries in the same layer
                 continue
 
-            road_id: QVariant = road.attribute('id')
-            road_highway: QVariant = road.attribute('highway')
-            road_name: QVariant = road.attribute('name')
-            road_maxspeed = helper_functions.cast_to_float(road.attribute('maxspeed'))  # TODO: check if road actually has the attribute maxspeed?!
+            road_id: int = road.attribute('id')
+            road_highway: Optional[str] = road.attribute('highway')
+            road_name: Optional[str] = road.attribute('name')
+            # TODO: check if road actually has the attribute maxspeed?!
+            # TODO: check if road has maxspeed 'walk' which is not convertable to a numeric type
+            road_maxspeed = helper_functions.cast_to_float(road.attribute('maxspeed'))
 
             if road_id not in id_list:
                 id_list.append(road_id)
@@ -167,20 +166,21 @@ def step_01(
     with edit(layer):
         for feature in layer.getFeatures():
             hw = feature.attribute('highway')
-            maxspeed: QVariant = feature.attribute('maxspeed')
+            maxspeed: Optional[str] = feature.attribute('maxspeed')
+            proc_maxspeed: Optional[float] = helper_functions.cast_to_float(maxspeed)
             if maxspeed == 'walk':
-                maxspeed = 10
-            else:
-                maxspeed = helper_functions.cast_to_float(maxspeed)
+                proc_maxspeed = 10
+
             if hw not in ['cycleway', 'footway', 'path', 'bridleway', 'steps']:
                 layer.changeAttributeValue(feature.id(), id_proc_highway, hw)
-                layer.changeAttributeValue(feature.id(), id_proc_maxspeed, maxspeed)
+                layer.changeAttributeValue(feature.id(), id_proc_maxspeed, proc_maxspeed)
                 continue
+
             id = feature.attribute('id')
-            is_sidepath: QVariant = feature.attribute('is_sidepath')
+            is_sidepath: Optional[str] = feature.attribute('is_sidepath')
             if feature.attribute('footway') == 'sidewalk':
                 is_sidepath = 'yes'
-            is_sidepath_of: QVariant = feature.attribute('is_sidepath:of')
+            is_sidepath_of: Optional[str] = feature.attribute('is_sidepath:of')
             checks = sidepath_dict[id]['checks']
 
             if not is_sidepath:
@@ -228,9 +228,9 @@ def step_01(
             layer.changeAttributeValue(feature.id(), id_proc_highway, is_sidepath_of)
 
             if is_sidepath == 'yes' and is_sidepath_of and is_sidepath_of in sidepath_dict[id]['maxspeed']:
-                maxspeed = sidepath_dict[id]['maxspeed'][is_sidepath_of]
-                if maxspeed:
-                    layer.changeAttributeValue(feature.id(), id_proc_maxspeed, maxspeed)
+                proc_maxspeed = sidepath_dict[id]['maxspeed'][is_sidepath_of]
+                if proc_maxspeed:
+                    layer.changeAttributeValue(feature.id(), id_proc_maxspeed, proc_maxspeed)
             # transfer names to sidepath
             if is_sidepath == 'yes' and len(sidepath_dict[id]['name']):
                 name = max(sidepath_dict[id]['name'], key=lambda k: sidepath_dict[id]['name'][k])  # the most frequent name in the surrounding

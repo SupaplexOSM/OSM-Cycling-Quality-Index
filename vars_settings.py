@@ -3,7 +3,7 @@ place to put setting variables to be imported and used as constants
 """
 
 from collections import defaultdict
-from typing import DefaultDict, Dict, List
+from typing import DefaultDict, Dict, List, Optional
 
 from qgis.core import (  # type: ignore
     NULL, QgsCoordinateReferenceSystem, QgsCoordinateTransform,
@@ -17,7 +17,7 @@ right_hand_traffic = True
 # offset distance for sidepath ways
 # -> set variable to 'realistic' (offset is derived from osm tags like width values)
 # -> or set to a number for a static offset (meter, can also be 0, if no offset is needed, e.g. for better routing analysis)
-offset_distance: int | str = 0
+offset_distance: float | str = 0.0
 # offset_distance = 'realistic'
 
 # Default oneway on cycle lanes and tracks
@@ -77,7 +77,7 @@ default_cycleway_surface_tracks = 'paving_stones'  # common surface on cycle tra
 default_cycleway_surface_lanes = 'asphalt'  # common surface on cycle lanes
 
 # common surface on highways
-default_highway_surface_defaultdict: DefaultDict[str, str] = defaultdict(lambda: "paving_stones", {
+default_highway_surface_defaultdict: DefaultDict[Optional[str], str] = defaultdict(lambda: "paving_stones", {
     'motorway': 'asphalt',
     'motorway_link': 'asphalt',
     'trunk': 'asphalt',

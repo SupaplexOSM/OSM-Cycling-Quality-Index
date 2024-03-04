@@ -42,7 +42,7 @@ def step_03(
             # before determining the way type according to highway tagging, first check for some specific way types that are tagged independent from "highway":
             if feature.attribute('bicycle_road') == 'yes':
                 # features with a "side" attribute are representing a cycleway or footway adjacent to the road with offset geometry - treat them as separate path, not as a bicycle road
-                side = feature.attribute('side')
+                side: str = str(feature.attribute('side'))
                 if not side:
                     way_type = 'bicycle road'
             if feature.attribute('footway') == 'link' or feature.attribute('cycleway') == 'link' or feature.attribute('path') == 'link' or feature.attribute('bridleway') == 'link':
@@ -89,7 +89,7 @@ def step_03(
 
                             elif is_sidepath == 'yes':
                                 separation_motor_vehicle = helper_functions.derive_separation(feature, 'motor_vehicle')
-                                if separation_motor_vehicle not in [None, NULL, 'no', 'none']:
+                                if separation_motor_vehicle is not None and separation_motor_vehicle not in [NULL, 'no', 'none']:
                                     if 'kerb' in separation_motor_vehicle or 'tree_row' in separation_motor_vehicle:
                                         way_type = 'cycle track'
                                     else:
@@ -110,7 +110,7 @@ def step_03(
                     cycleway_left = feature.attribute('cycleway:left')
                     cycleway_right = feature.attribute('cycleway:right')
                     bicycle = feature.attribute('bicycle')
-                    side = feature.attribute('side')  # features with a "side" attribute are representing a cycleway or footway adjacent to the road with offset geometry
+                    side = str(feature.attribute('side'))  # features with a "side" attribute are representing a cycleway or footway adjacent to the road with offset geometry
                     # if this feature don't represent a cycle lane, it's a center line representing the shared road
                     if not side:
                         # distinguish shared roads (without lane markings) and shared traffic lanes (with lane markings)
@@ -171,7 +171,7 @@ def step_03(
                                             way_type = 'segregated path'
                                         else:
                                             separation_motor_vehicle = helper_functions.derive_separation(feature, 'motor_vehicle')
-                                            if separation_motor_vehicle not in [NULL, 'no', 'none']:
+                                            if separation_motor_vehicle is not None and separation_motor_vehicle not in [NULL, 'no', 'none']:
                                                 if 'kerb' in separation_motor_vehicle or 'tree_row' in separation_motor_vehicle:
                                                     way_type = 'cycle track'
                                                 else:
@@ -196,7 +196,7 @@ def step_03(
                                     else:
                                         way_type = 'shared road'
             if way_type == '':
-                way_type = NULL
+                way_type = None
             else:
                 layer.changeAttributeValue(feature.id(), id_way_type, way_type)
 
