@@ -1,0 +1,52 @@
+# See https://pre-commit.com for more information
+# See https://pre-commit.com/hooks.html for more hooks
+repos:
+-   repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.1.0
+    hooks:
+    -   id: trailing-whitespace
+    -   id: check-yaml
+    -   id: check-added-large-files
+    -   id: check-ast
+    -   id: check-case-conflict
+    -   id: check-docstring-first
+    -   id: check-executables-have-shebangs
+    -   id: check-json
+    -   id: check-shebang-scripts-are-executable
+    -   id: check-merge-conflict
+    -   id: check-xml
+    -   id: mixed-line-ending
+    -   id: requirements-txt-fixer
+-   repo: https://github.com/PyCQA/flake8
+    rev: '4.0.1'
+    hooks:
+    -   id: flake8
+-   repo: https://github.com/pycqa/isort
+    rev: '5.12.0'
+    hooks:
+      - id: isort
+        name: isort
+-   repo: https://github.com/pre-commit/mirrors-mypy
+    rev: 'v0.931'  # Use the sha / tag you want to point at
+    hooks:
+    -   id: mypy
+        args: [
+            --disallow-untyped-defs,
+            --disallow-incomplete-defs,
+            --disallow-untyped-calls,
+            --disallow-any-explicit,
+            --disallow-any-generics,
+            --disallow-subclassing-any,
+            --check-untyped-defs,
+            --warn-redundant-casts,
+            --warn-unused-ignores,
+            --warn-return-any,
+            --warn-unreachable,
+            --disallow-redefinition,
+            --strict-equality,
+            --strict,
+            --show-error-context,
+            --show-column-numbers,
+            # --show-error-code-links,
+            # --pretty
+        ]

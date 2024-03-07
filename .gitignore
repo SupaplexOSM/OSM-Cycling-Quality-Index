@@ -1,0 +1,7 @@
+__pycache__
+*.log
+gui.ini
+.idea
+data/*.geojson
+data/index_style.qml
+symbology-style.db
