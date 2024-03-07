@@ -5,7 +5,7 @@
 #   Download OSM data input from https://overpass-turbo.eu/s/1G3t,          #
 #   save it at data/way_import.geojson and run the script.                  #
 #                                                                           #
-#   > version/date: 2024-02-28                                              #
+#   > version/date: 2024-03-07                                              #
 #---------------------------------------------------------------------------#
 
 from os.path import exists
@@ -18,8 +18,10 @@ import os, processing, math, time
 #project directory
 from console.console import _console
 project_dir = os.path.dirname(_console.console.tabEditorWidget.currentWidget().path) + '/'
-dir_input = project_dir + 'data/way_import.geojson'
-dir_output = project_dir + 'data/cycling_quality_index.geojson'
+dir_input = project_dir + 'data/way_import'
+dir_output = project_dir + 'data/cycling_quality_index'
+file_format = '.geojson'
+multi_input = False #if "True", it's possible to merge different import files stored in the input directory, marked with an ascending number starting with 1 at the end of the filename (e.g. way_import1.geojson, way_import2.geojson etc.) - can be used to process different areas at the same time or to process a larger area that can't be downloaded in one file
 
 #right or left hand traffic?
 #TODO: left hand traffic not supported yet in most cases
@@ -272,51 +274,6 @@ save_options = QgsVectorFileWriter.SaveVectorOptions()
 save_options.driverName = 'GeoJSON'
 save_options.ct = QgsCoordinateTransform(QgsCoordinateReferenceSystem(crs_from), QgsCoordinateReferenceSystem(crs_to), coordinateTransformContext)
 
-#list of attributes that are retained in the saved file
-retained_attributes_list = [
-    'id',
-    'name',
-    'way_type',
-    'side',
-    'offset',
-    'proc_width',
-    'proc_surface',
-    'proc_smoothness',
-    'proc_oneway',
-    'proc_sidepath',
-    'proc_highway',
-    'proc_maxspeed',
-    'proc_traffic_mode_left',
-    'proc_traffic_mode_right',
-    'proc_separation_left',
-    'proc_separation_right',
-    'proc_buffer_left',
-    'proc_buffer_right',
-    'proc_mandatory',
-    'proc_traffic_sign',
-    'fac_width',
-    'fac_surface',
-    'fac_highway',
-    'fac_maxspeed',
-#    'fac_protection_level',
-#    'prot_level_separation_left',
-#    'prot_level_separation_right',
-#    'prot_level_buffer_left',
-#    'prot_level_buffer_right',
-#    'prot_level_left',
-#    'prot_level_right',
-    'base_index',
-    'fac_1',
-    'fac_2',
-    'fac_3',
-    'fac_4',
-    'index',
-    'data_incompleteness',
-    'data_missing',
-    'data_bonus',
-    'data_malus'
-]
-
 #missing data values and how much they wight for a data (in)completeness number
 data_incompleteness_dict = {
     'width': 25,
@@ -329,168 +286,8 @@ data_incompleteness_dict = {
     'lit': 15
 }
 
-
-#-------------------------------
-#   V a r i a b l e s   E n d   
-#-------------------------------
-
-
-
-#derive cycleway and sidewalk attributes mapped on the centerline for transfering them to separate ways
-def deriveAttribute(feature, attribute_name, type, side, vartype):
-    attribute = NULL
-    attribute = feature.attribute(str(type) + ':' + str(side) + ':' + str(attribute_name))
-    if not attribute:
-        attribute = feature.attribute(str(type) + ':both:' + str(attribute_name))
-    if not attribute:
-        attribute = feature.attribute(str(type) + ':' + str(attribute_name))
-    if attribute != NULL:
-        try:
-            if vartype == 'int':
-                attribute = int(attribute)
-            if vartype == 'float':
-                attribute = float(attribute)
-            if vartype == 'str':
-                attribute = str(attribute)
-        except:
-            attribute = NULL
-    return(attribute)
-
-
-
-#derive separation on the side of a specific traffic mode (e.g. foot traffic usually on the right side)
-def deriveSeparation(feature, traffic_mode):
-    separation = NULL
-    separation_left = feature.attribute('separation:left')
-    separation_right = feature.attribute('separation:right')
-    traffic_mode_left = feature.attribute('traffic_mode:left')
-    traffic_mode_right = feature.attribute('traffic_mode:right')
-
-    #default for the right side: adjacent foot traffic
-    if traffic_mode == 'foot':
-        if traffic_mode_left == 'foot':
-            separation = separation_left
-        if not traffic_mode_right or traffic_mode_right == 'foot':
-            separation = separation_right
-
-            #TODO: Wenn beidseitig gleicher traffic_mode, dann schwächere separation übergeben
-            
-    #default for the left side: adjacent motor vehicle traffic
-    if traffic_mode == 'motor_vehicle':
-        if traffic_mode_right in ['motor_vehicle', 'parking', 'psv']:
-            separation = separation_right
-        if not traffic_mode_left or traffic_mode_left in ['motor_vehicle', 'parking', 'psv']:
-            separation = separation_left
-
-    return(separation)
-
-
-
-#interpret access tags of a feature to get the access value for a specific traffic mode
-def getAccess(feature, access_key):
-    access_dict = {
-        'foot': ['access'],
-        'vehicle': ['access'],
-        'bicycle': ['vehicle', 'access'],
-        'motor_vehicle': ['vehicle', 'access'],
-        'motorcar': ['motor_vehicle', 'vehicle', 'access'],
-        'hgv': ['motor_vehicle', 'vehicle', 'access'],
-        'psv': ['motor_vehicle', 'vehicle', 'access'],
-        'bus': ['psv', 'motor_vehicle', 'vehicle', 'access']
-    }
-    access_value = NULL
-    if feature.fields().indexOf(access_key) != -1:
-        access_value = feature.attribute(access_key)
-    if not access_value and access_key in access_dict:
-        for i in range(len(access_dict[access_key])):
-            if not access_value and feature.fields().indexOf(access_dict[access_key][i]) != -1:
-                access_value = feature.attribute(access_dict[access_key][i])
-    return(access_value)
-
-
-
-#return a value as a float
-def getNumber(value):
-    if value != NULL:
-        try:
-            value = float(value)
-        except:
-            value = NULL
-    return(value)
-
-
-
-#if there is a specific delimiter character in a string (like ";" or "|"), return a list of single, non-delimited values (e.g. "asphalt;paving_stones" -> ["asphalt", "paving_stones"])
-def getDelimitedValues(value_string, deli_char, var_type):
-    delimiters = [-1]
-    for pos, char in enumerate(value_string):
-        if(char == deli_char):
-            delimiters.append(pos)
-    #Start- (oben) und Endpunkte des strings ergänzen zur einfacheren Verarbeitung
-    delimiters.append(len(value_string))
-
-    #einzelne Abbiegespuren in Array speichern und zurückgeben
-    value_array = []
-    for i in range(len(delimiters) - 1):
-        value = value_string[delimiters[i] + 1:delimiters[i + 1]]
-        if var_type == 'float' or var_type == 'int':
-            if value == '' or value == NULL:
-                value = 0
-            if var_type == 'float':
-                value_array.append(float(value))
-            if var_type == 'int':
-                value_array.append(int(value))
-        else:
-            value_array.append(value)
-    return(value_array)
-
-
-
-#from a list of surface values, choose the weakest one
-def getWeakestSurfaceValue(value_list):
-    #surface values in descent order
-    surface_value_list = ['asphalt', 'paved', 'concrete', 'chipseal', 'metal', 'paving_stones', 'compacted', 'fine_gravel', 'paving_stones', 'concrete:plates', 'bricks', 'sett', 'cobblestone', 'concrete:lanes', 'unpaved', 'wood', 'unhewn_cobblestone', 'ground', 'dirt', 'earth', 'mud', 'gravel', 'pebblestone', 'grass', 'grass_paver', 'stepping_stones', 'woodchips', 'sand', 'rock']
-
-    value = NULL
-    for i in range(len(value_list)):
-        if value_list[i] in surface_value_list:
-            if not value:
-                value = value_list[i]
-            else:
-                if surface_value_list.index(value_list[i]) > surface_value_list.index(value):
-                    value = value_list[i]
-    return(value)
-
-
-
-#add a value to a delimited string
-def addDelimitedValue(var, value):
-    if var:
-        var += ';'
-    var += value
-    return(var)
-
-
-
-#--------------------------------
-#      S c r i p t   S t a r t
-#--------------------------------
-print(time.strftime('%H:%M:%S', time.localtime()), 'Start processing:')
-
-print(time.strftime('%H:%M:%S', time.localtime()), 'Read data...')
-if not exists(dir_input):
-    print(time.strftime('%H:%M:%S', time.localtime()), '[!] Error: No valid input file at "' + dir_input + '".')
-else:
-    layer_way_input = QgsVectorLayer(dir_input + '|geometrytype=LineString', 'way input', 'ogr')
-
-    print(time.strftime('%H:%M:%S', time.localtime()), 'Reproject data...')
-    layer = processing.run('native:reprojectlayer', { 'INPUT' : layer_way_input, 'TARGET_CRS' : QgsCoordinateReferenceSystem(crs_to), 'OUTPUT': 'memory:'})['OUTPUT']
-
-    #prepare attributes
-    print(time.strftime('%H:%M:%S', time.localtime()), 'Prepare data...')
-    #delete unneeded attributes
-    #list of attributes that are used for cycling quality analysis
-    attributes_list = [
+#list of attributes that are used for cycling quality analysis
+attributes_list = [
     'id',
     'layer',
     'highway',
@@ -684,11 +481,247 @@ else:
     'crossing',
     'crossing:markings'
     ]
+
+#list of attributes that are retained in the finally saved file
+attributes_list_finally_retained = [
+    'id',
+    'name',
+    'way_type',
+    'index',
+    'index_10',
+    'stress_level',
+    'side',
+    'offset',
+    'proc_width',
+    'proc_surface',
+    'proc_smoothness',
+    'proc_oneway',
+    'proc_sidepath',
+    'proc_highway',
+    'proc_maxspeed',
+    'proc_traffic_mode_left',
+    'proc_traffic_mode_right',
+    'proc_separation_left',
+    'proc_separation_right',
+    'proc_buffer_left',
+    'proc_buffer_right',
+    'proc_mandatory',
+    'proc_traffic_sign',
+    'fac_width',
+    'fac_surface',
+    'fac_highway',
+    'fac_maxspeed',
+#    'fac_protection_level',
+#    'prot_level_separation_left',
+#    'prot_level_separation_right',
+#    'prot_level_buffer_left',
+#    'prot_level_buffer_right',
+#    'prot_level_left',
+#    'prot_level_right',
+    'base_index',
+    'fac_1',
+    'fac_2',
+    'fac_3',
+    'fac_4',
+    'data_bonus',
+    'data_malus',
+    'data_incompleteness',
+    'data_missing',
+    'filter_way_type',
+    'filter_usable'
+]
+
+
+#-------------------------------
+#   V a r i a b l e s   E n d   
+#-------------------------------
+
+
+
+#derive cycleway and sidewalk attributes mapped on the centerline for transfering them to separate ways
+def deriveAttribute(feature, attribute_name, type, side, vartype):
+    attribute = NULL
+    attribute = feature.attribute(str(type) + ':' + str(side) + ':' + str(attribute_name))
+    if not attribute:
+        attribute = feature.attribute(str(type) + ':both:' + str(attribute_name))
+    if not attribute:
+        attribute = feature.attribute(str(type) + ':' + str(attribute_name))
+    if attribute != NULL:
+        try:
+            if vartype == 'int':
+                attribute = int(attribute)
+            if vartype == 'float':
+                attribute = float(attribute)
+            if vartype == 'str':
+                attribute = str(attribute)
+        except:
+            attribute = NULL
+    return(attribute)
+
+
+
+#derive separation on the side of a specific traffic mode (e.g. foot traffic usually on the right side)
+def deriveSeparation(feature, traffic_mode):
+    separation = NULL
+    separation_left = feature.attribute('separation:left')
+    separation_right = feature.attribute('separation:right')
+    traffic_mode_left = feature.attribute('traffic_mode:left')
+    traffic_mode_right = feature.attribute('traffic_mode:right')
+
+    #default for the right side: adjacent foot traffic
+    if traffic_mode == 'foot':
+        if traffic_mode_left == 'foot':
+            separation = separation_left
+        if not traffic_mode_right or traffic_mode_right == 'foot':
+            separation = separation_right
+
+            #TODO: Wenn beidseitig gleicher traffic_mode, dann schwächere separation übergeben
+            
+    #default for the left side: adjacent motor vehicle traffic
+    if traffic_mode == 'motor_vehicle':
+        if traffic_mode_right in ['motor_vehicle', 'parking', 'psv']:
+            separation = separation_right
+        if not traffic_mode_left or traffic_mode_left in ['motor_vehicle', 'parking', 'psv']:
+            separation = separation_left
+
+    return(separation)
+
+
+
+#interpret access tags of a feature to get the access value for a specific traffic mode
+def getAccess(feature, access_key):
+    access_dict = {
+        'foot': ['access'],
+        'vehicle': ['access'],
+        'bicycle': ['vehicle', 'access'],
+        'motor_vehicle': ['vehicle', 'access'],
+        'motorcar': ['motor_vehicle', 'vehicle', 'access'],
+        'hgv': ['motor_vehicle', 'vehicle', 'access'],
+        'psv': ['motor_vehicle', 'vehicle', 'access'],
+        'bus': ['psv', 'motor_vehicle', 'vehicle', 'access']
+    }
+    access_value = NULL
+    if feature.fields().indexOf(access_key) != -1:
+        access_value = feature.attribute(access_key)
+    if not access_value and access_key in access_dict:
+        for i in range(len(access_dict[access_key])):
+            if not access_value and feature.fields().indexOf(access_dict[access_key][i]) != -1:
+                access_value = feature.attribute(access_dict[access_key][i])
+    return(access_value)
+
+
+
+#return a value as a float
+def getNumber(value):
+    if value != NULL:
+        try:
+            value = float(value)
+        except:
+            value = NULL
+    return(value)
+
+
+
+#if there is a specific delimiter character in a string (like ";" or "|"), return a list of single, non-delimited values (e.g. "asphalt;paving_stones" -> ["asphalt", "paving_stones"])
+def getDelimitedValues(value_string, deli_char, var_type):
+    delimiters = [-1]
+    for pos, char in enumerate(value_string):
+        if(char == deli_char):
+            delimiters.append(pos)
+    #Start- (oben) und Endpunkte des strings ergänzen zur einfacheren Verarbeitung
+    delimiters.append(len(value_string))
+
+    #einzelne Abbiegespuren in Array speichern und zurückgeben
+    value_array = []
+    for i in range(len(delimiters) - 1):
+        value = value_string[delimiters[i] + 1:delimiters[i + 1]]
+        if var_type == 'float' or var_type == 'int':
+            if value == '' or value == NULL:
+                value = 0
+            if var_type == 'float':
+                value_array.append(float(value))
+            if var_type == 'int':
+                value_array.append(int(value))
+        else:
+            value_array.append(value)
+    return(value_array)
+
+
+
+#from a list of surface values, choose the weakest one
+def getWeakestSurfaceValue(value_list):
+    #surface values in descent order
+    surface_value_list = ['asphalt', 'paved', 'concrete', 'chipseal', 'metal', 'paving_stones', 'compacted', 'fine_gravel', 'paving_stones', 'concrete:plates', 'bricks', 'sett', 'cobblestone', 'concrete:lanes', 'unpaved', 'wood', 'unhewn_cobblestone', 'ground', 'dirt', 'earth', 'mud', 'gravel', 'pebblestone', 'grass', 'grass_paver', 'stepping_stones', 'woodchips', 'sand', 'rock']
+
+    value = NULL
+    for i in range(len(value_list)):
+        if value_list[i] in surface_value_list:
+            if not value:
+                value = value_list[i]
+            else:
+                if surface_value_list.index(value_list[i]) > surface_value_list.index(value):
+                    value = value_list[i]
+    return(value)
+
+
+
+#add a value to a delimited string
+def addDelimitedValue(var, value):
+    if var:
+        var += ';'
+    var += value
+    return(var)
+
+
+
+#--------------------------------
+#      S c r i p t   S t a r t
+#--------------------------------
+print(time.strftime('%H:%M:%S', time.localtime()), 'Start processing:')
+
+print(time.strftime('%H:%M:%S', time.localtime()), 'Read data...')
+
+#multiple input files can be merged to one single input
+if multi_input:
+    input_data = []
+    i = 1
+    while exists(dir_input + str(i) + file_format):
+        print(time.strftime('%H:%M:%S', time.localtime()), '   Read input file ' + str(i) + '...')
+        layer_way_input = QgsVectorLayer(dir_input + str(i) + file_format + '|geometrytype=LineString', 'way input', 'ogr')
+        layer_way_input = processing.run('native:retainfields', { 'INPUT' : layer_way_input, 'FIELDS' : attributes_list, 'OUTPUT': 'memory:'})['OUTPUT']
+        input_data.append(layer_way_input)
+        i += 1
+    if input_data:
+        print(time.strftime('%H:%M:%S', time.localtime()), '   Merge input files...')
+        layer_way_input = processing.run('native:mergevectorlayers', { 'LAYERS' : input_data, 'OUTPUT': 'memory:'})['OUTPUT']
+        layer_way_input = processing.run('native:deleteduplicategeometries', {'INPUT': layer_way_input, 'OUTPUT': dir_input + file_format })
+    else:
+        print(time.strftime('%H:%M:%S', time.localtime()), '[!] Warning: No valid input files at "' + dir_input + '*' + file_format + '". Use ascending numbers starting with 1 at the end of the file names.')
+        if exists(dir_input + file_format):
+            print(time.strftime('%H:%M:%S', time.localtime()), '[!] Warning: Continuing with input file "' + dir_input + file_format + '".')
+
+if not exists(dir_input + file_format):
+    if multi_input:
+        print(time.strftime('%H:%M:%S', time.localtime()), '[!] Error: No valid input files at "' + dir_input + '*' + file_format + '".')
+    else:
+        print(time.strftime('%H:%M:%S', time.localtime()), '[!] Error: No valid input file at "' + dir_input + file_format + '".')
+else:
+    layer_way_input = QgsVectorLayer(dir_input + file_format + '|geometrytype=LineString', 'way input', 'ogr')
+
+    print(time.strftime('%H:%M:%S', time.localtime()), 'Reproject data...')
+    layer = processing.run('native:reprojectlayer', { 'INPUT' : layer_way_input, 'TARGET_CRS' : QgsCoordinateReferenceSystem(crs_to), 'OUTPUT': 'memory:'})['OUTPUT']
+
+    #prepare attributes
+    print(time.strftime('%H:%M:%S', time.localtime()), 'Prepare data...')
+    #delete unneeded attributes
     layer = processing.run('native:retainfields', { 'INPUT' : layer, 'FIELDS' : attributes_list, 'OUTPUT': 'memory:'})['OUTPUT']
 
     #list of new attributes, important for calculating cycling quality index
     new_attributes_dict = {
     'way_type': 'String',
+    'index': 'Int',
+    'index_10': 'Int',
+    'stress_level': 'Int',
     'offset': 'Double',
     'offset_cycleway_left': 'Double',
     'offset_cycleway_right': 'Double',
@@ -727,11 +760,12 @@ else:
     'fac_2': 'Double',
     'fac_3': 'Double',
     'fac_4': 'Double',
-    'index': 'Int',
+    'data_bonus': 'String',
+    'data_malus': 'String',
     'data_incompleteness': 'Double',
     'data_missing': 'String',
-    'data_bonus': 'String',
-    'data_malus': 'String'
+    'filter_usable': 'Int',
+    'filter_way_type': 'String'
     }
     for attr in list(new_attributes_dict.keys()):
         attributes_list.append(attr)
@@ -752,6 +786,9 @@ else:
         layer.updateFields()
 
     id_way_type = layer.fields().indexOf('way_type')
+    id_index = layer.fields().indexOf('index')
+    id_index_10 = layer.fields().indexOf('index_10')
+    id_stress_level = layer.fields().indexOf('stress_level')
     id_offset = layer.fields().indexOf('offset')
     id_offset_cycleway_left = layer.fields().indexOf('offset_cycleway_left')
     id_offset_cycleway_right = layer.fields().indexOf('offset_cycleway_right')
@@ -790,11 +827,12 @@ else:
     id_fac_2 = layer.fields().indexOf('fac_2')
     id_fac_3 = layer.fields().indexOf('fac_3')
     id_fac_4 = layer.fields().indexOf('fac_4')
-    id_index = layer.fields().indexOf('index')
-    id_data_incompleteness = layer.fields().indexOf('data_incompleteness')
-    id_data_missing = layer.fields().indexOf('data_missing')
     id_data_bonus = layer.fields().indexOf('data_bonus')
     id_data_malus = layer.fields().indexOf('data_malus')
+    id_data_incompleteness = layer.fields().indexOf('data_incompleteness')
+    id_data_missing = layer.fields().indexOf('data_missing')
+    id_filter_usable = layer.fields().indexOf('filter_usable')
+    id_filter_way_type = layer.fields().indexOf('filter_way_type')
 
     QgsProject.instance().addMapLayer(layer, False)
 
@@ -890,10 +928,10 @@ else:
         for feature in layer.getFeatures():
             hw = feature.attribute('highway')
             maxspeed = feature.attribute('maxspeed')
-            if maxspeed == 'walk':
+            if maxspeed == 'walk' or (not maxspeed and hw == 'living_street'):
                 maxspeed = 10
-            else:
-                maxspeed = getNumber(maxspeed)
+            if not maxspeed and hw == 'living_street':
+                maxspeed = 10
             if not hw in ['cycleway', 'footway', 'path', 'bridleway', 'steps']:
                 layer.changeAttributeValue(feature.id(), id_proc_highway, hw)
                 layer.changeAttributeValue(feature.id(), id_proc_maxspeed, maxspeed)
@@ -1168,8 +1206,6 @@ else:
                                     way_type = 'cycle track'
                                 else:
                                     way_type = 'cycle path'
-                                    if not feature.attribute('proc_sidepath') in ['yes', 'no']:
-                                        print(feature.attribute('id'))
                             
                             elif is_sidepath == 'yes':
                                 separation_motor_vehicle = deriveSeparation(feature, 'motor_vehicle')
@@ -1287,7 +1323,7 @@ else:
     #4: Derive relevant attributes for index and factors #
     #----------------------------------------------------#
 
-    print(time.strftime('%H:%M:%S', time.localtime()), 'Derive attributes...')
+    print(time.strftime('%H:%M:%S', time.localtime()), 'Derive attributes/calculate index...')
     with edit(layer):
         for feature in layer.getFeatures():
             way_type = feature.attribute('way_type')
@@ -1842,6 +1878,25 @@ else:
             layer.changeAttributeValue(feature.id(), id_proc_mandatory, proc_mandatory)
             layer.changeAttributeValue(feature.id(), id_proc_traffic_sign, proc_traffic_sign)
 
+            #-------------
+            #add extra attributes to easy filter non-usable segments or by way type
+            #-------------
+            filter_usable = 1
+            if proc_mandatory in ['prohibited', 'use_sidepath']:
+                filter_usable = 0
+            layer.changeAttributeValue(feature.id(), id_filter_usable, filter_usable)
+
+            filter_way_type = NULL
+            if way_type in ['cycle path', 'cycle track', 'shared path', 'segregated path', 'shared footway', 'cycle lane (protected)']:
+                filter_way_type = 'separated'
+            elif way_type in ['cycle lane (advisory)', 'cycle lane (exclusive)', 'cycle lane (central)', 'link', 'crossing']:
+                filter_way_type = 'cycle lanes'
+            elif way_type == 'bicycle road':
+                filter_way_type = 'bicycle road'
+            elif way_type in ['shared road', 'shared traffic lane', 'shared bus lane', 'track or service']:
+                filter_way_type = 'shared traffic'
+            layer.changeAttributeValue(feature.id(), id_filter_way_type, filter_way_type)
+
 
 
             #-------------------------------#
@@ -2019,6 +2074,7 @@ else:
             #Calculate index
             #---------------
             index = NULL
+            index_10 = NULL
             if base_index != NULL:
                 #factor 1: width and surface
                 #width and surface factors are weighted, so that low values have a stronger influence on the index
@@ -2129,12 +2185,65 @@ else:
                 index = max(min(100, index), 0) #index should be between 0 and 100 in the end for pragmatic reasons
                 index = int(round(index))       #index is an int
 
+                index_10 = index // 10   #index from 0..10 (e.g. index = 56 -> index_10 = 5)
+
             layer.changeAttributeValue(feature.id(), id_index, index)
+            layer.changeAttributeValue(feature.id(), id_index_10, index_10)
             layer.changeAttributeValue(feature.id(), id_data_missing, data_missing)
             layer.changeAttributeValue(feature.id(), id_data_bonus, data_bonus)
             layer.changeAttributeValue(feature.id(), id_data_malus, data_malus)
 
+
+
+            #---------------
+            #Calculate levels of traffic stress
+            #---------------
+            lts = NULL
+            if way_type in ['cycle path', 'cycle track', 'segregated path', 'cycle lane (protected)']:
+                lts = 1
+            elif way_type in ['shared path', 'shared footway']:
+                if not proc_oneway in ['yes', '-1'] and proc_width and proc_width < 3 and proc_maxspeed and proc_maxspeed > 30:
+                    lts = 3
+                else:
+                    lts = 1
+            elif way_type in ['cycle lane (advisory)', 'cycle lane (central)', 'shared bus lane', 'link', 'crossing']:
+                if proc_maxspeed and proc_maxspeed <= 10:
+                    lts = 1
+                elif proc_maxspeed and proc_maxspeed <= 30:
+                    lts = 2
+                elif proc_width and proc_width >= 1.5:
+                    lts = 3
+                else:
+                    lts = 4
+            elif way_type == 'cycle lane (exclusive)':
+                if proc_maxspeed and proc_maxspeed <= 10:
+                    lts = 1
+                elif proc_maxspeed and proc_maxspeed <= 50 and proc_width and proc_width >= 1.85:
+                    lts = 2
+                else:
+                    lts = 3
+            elif way_type in ['bicycle road', 'shared road', 'shared traffic lane']:
+                if way_type == 'bicycle road' and getAccess(feature, 'motor_vehicle') in motor_vehicle_access_index_dict:
+                    lts = 1
+                else:
+                    if proc_maxspeed and proc_maxspeed <= 10 and proc_highway in ['residential', 'living_street']:
+                        lts = 1
+                    elif proc_maxspeed and proc_maxspeed <= 30 and proc_highway in ['tertiary', 'tertiary_link', 'unclassified', 'road', 'residential', 'living_street']:
+                        lts = 2
+                    else:
+                        lts = 4
+            elif way_type == 'track or service':
+                if proc_maxspeed and proc_maxspeed <= 10:
+                    lts = 1
+                else:
+                    lts = 2
+            layer.changeAttributeValue(feature.id(), id_stress_level, lts)
+
+
+
+            #---------------
             #derive a data completeness number
+            #---------------
             data_incompleteness = 0
             missing_values = getDelimitedValues(data_missing, ';', 'string')
             for value in missing_values:
@@ -2146,7 +2255,7 @@ else:
 
     #clean up data set
     print(time.strftime('%H:%M:%S', time.localtime()), 'Clean up data...')
-    processing.run('native:retainfields', { 'INPUT' : layer, 'FIELDS' : retained_attributes_list, 'OUTPUT': dir_output })
+    processing.run('native:retainfields', { 'INPUT' : layer, 'FIELDS' : attributes_list_finally_retained, 'OUTPUT': dir_output + file_format })
 
 
 
