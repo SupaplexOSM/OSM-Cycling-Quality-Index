@@ -2,10 +2,10 @@
 #   Cycling Quality Index                                                   #
 #   --------------------------------------------------                      #
 #   Script for processing OSM data to analyse the cycling quality of ways.  #
-#   Download OSM data input from https://overpass-turbo.eu/s/1G3t,          #
+#   Download OSM data input from https://overpass-turbo.eu/s/1IDp,          #
 #   save it at data/way_import.geojson and run the script.                  #
 #                                                                           #
-#   > version/date: 2024-03-07                                              #
+#   > version/date: 2024-03-14                                              #
 #---------------------------------------------------------------------------#
 
 from os.path import exists
@@ -930,11 +930,13 @@ else:
             maxspeed = feature.attribute('maxspeed')
             if maxspeed == 'walk' or (not maxspeed and hw == 'living_street'):
                 maxspeed = 10
+            if maxspeed == 'none':
+                maxspeed = 299
             if not maxspeed and hw == 'living_street':
                 maxspeed = 10
             if not hw in ['cycleway', 'footway', 'path', 'bridleway', 'steps']:
                 layer.changeAttributeValue(feature.id(), id_proc_highway, hw)
-                layer.changeAttributeValue(feature.id(), id_proc_maxspeed, maxspeed)
+                layer.changeAttributeValue(feature.id(), id_proc_maxspeed, getNumber(maxspeed))
                 continue
             id = feature.attribute('id')
             is_sidepath = feature.attribute('is_sidepath')
@@ -990,7 +992,7 @@ else:
             if is_sidepath == 'yes' and is_sidepath_of and is_sidepath_of in sidepath_dict[id]['maxspeed']:
                 maxspeed = sidepath_dict[id]['maxspeed'][is_sidepath_of]
                 if maxspeed:
-                    layer.changeAttributeValue(feature.id(), id_proc_maxspeed, maxspeed)
+                    layer.changeAttributeValue(feature.id(), id_proc_maxspeed, getNumber(maxspeed))
             #transfer names to sidepath
             if is_sidepath == 'yes' and len(sidepath_dict[id]['name']):
                 name = max(sidepath_dict[id]['name'], key=lambda k: sidepath_dict[id]['name'][k]) #the most frequent name in the surrounding
