@@ -12,7 +12,7 @@ A Python script for QGIS that generates a cycling quality index from OpenStreetM
 * Calculation of Levels of Traffic Stress (1..4), a common methodology for assessing cycling infrastructure and the cycle-friendliness of roads and paths
 
 ### How to use this script
-1. Run [Overpass-Query](https://overpass-turbo.eu/s/1G3t) for the desired area/region to get OpenStreetMap road and way data suitable for cycling 
+1. Run [Overpass-Query](https://overpass-turbo.eu/s/1IDp) for the desired area/region to get OpenStreetMap road and way data suitable for cycling 
 2. Export result as GeoJSON to 'data/way_import.geojson' (or save different input files with an appended number starting at 1 to evaluate larger or different areas (e.g. 'way_import1.geojson', 'way_import2.geojson'...); set 'multi_input = True' in this case)
 3. Run this python script in QGIS
    1. "Plugins" => "Python Console"
