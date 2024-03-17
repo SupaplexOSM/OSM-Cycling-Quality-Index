@@ -5,7 +5,7 @@
 #   Download OSM data input from https://overpass-turbo.eu/s/1IDp,          #
 #   save it at data/way_import.geojson and run the script.                  #
 #                                                                           #
-#   > version/date: 2024-03-14                                              #
+#   > version/date: 2024-03-17                                              #
 #---------------------------------------------------------------------------#
 
 from os.path import exists
@@ -298,6 +298,7 @@ attributes_list = [
     'tracktype',
     'is_sidepath',
     'is_sidepath:of',
+    'priority_road',
 
     'access',
     'vehicle',
@@ -2228,7 +2229,8 @@ else:
                 if way_type == 'bicycle road' and getAccess(feature, 'motor_vehicle') in motor_vehicle_access_index_dict:
                     lts = 1
                 else:
-                    if proc_maxspeed and proc_maxspeed <= 10 and proc_highway in ['residential', 'living_street']:
+                    priority_road = feature.attribute('priority_road')
+                    if proc_maxspeed and proc_maxspeed <= 10 and proc_highway in ['residential', 'living_street'] and (not priority_road or priority_road == 'no'):
                         lts = 1
                     elif proc_maxspeed and proc_maxspeed <= 30 and proc_highway in ['tertiary', 'tertiary_link', 'unclassified', 'road', 'residential', 'living_street']:
                         lts = 2
@@ -2257,14 +2259,16 @@ else:
 
     #clean up data set
     print(time.strftime('%H:%M:%S', time.localtime()), 'Clean up data...')
-    processing.run('native:retainfields', { 'INPUT' : layer, 'FIELDS' : attributes_list_finally_retained, 'OUTPUT': dir_output + file_format })
+    layer = processing.run('native:retainfields', { 'INPUT' : layer, 'FIELDS' : attributes_list_finally_retained, 'OUTPUT': 'memory:' })['OUTPUT']
 
+    print(time.strftime('%H:%M:%S', time.localtime()), 'Save output data set...')
+    qgis.core.QgsVectorFileWriter.writeAsVectorFormat(layer, dir_output + file_format, 'utf-8', QgsCoordinateReferenceSystem(crs_to), save_options.driverName)
 
-
-#    print(time.strftime('%H:%M:%S', time.localtime()), 'Display data...')
-#    QgsProject.instance().addMapLayer(layer, True)
-#
-#    #focus on output layer
-#    iface.mapCanvas().setExtent(layer.extent())
+    print(time.strftime('%H:%M:%S', time.localtime()), 'Display data...')
+    QgsProject.instance().addMapLayer(layer, True)
+    layer.setName('Cycling Quality Index')
+    layer.loadNamedStyle(project_dir + 'styles/index.qml')
+    #focus on output layer
+    iface.mapCanvas().setExtent(layer.extent())
 
 print(time.strftime('%H:%M:%S', time.localtime()), 'Finished processing.')
