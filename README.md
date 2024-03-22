@@ -20,6 +20,10 @@ A Python script for QGIS that generates a cycling quality index from OpenStreetM
    1. Open File in QGIS Python Editor
    1. Run from there (Note: Do _not_ use the "Browser" => File => "Run Script")
 
+### Notes on future developments
+The index is a proof of concept of what is possible with OSM data. It is intended as a basis for discussion rather than a finished project. To be able to process the index for larger areas in the future, we are planning a better technical implementation (in particular processing via PostgreSQL instead of a Python script – currently it's based on "hobby" Python knowledge).
+
 ### Example visualization
-An interactive demo map for Berlin can be found here: [OpenStreetMap Verkehrswende / Cycling Quality Index](https://www.osm-verkehrswende.org/cqi/map/)
+* An interactive demo map for Berlin can be found here: [OpenStreetMap Verkehrswende / Cycling Quality Index](https://www.osm-verkehrswende.org/cqi/map/)
+* The index was presented at the FOSSGIS Conference 2024. [A video recording and the slides can be found on our project page](https://www.osm-verkehrswende.org/cqi/posts/2024-01-01-cqi-fossgis-2024/)
 ![grafik](https://github.com/SupaplexOSM/OSM-Cycling-Quality-Index/assets/66696066/c13688d4-9a82-490c-bcfd-33290fd4d7b0)
