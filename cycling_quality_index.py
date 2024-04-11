@@ -471,7 +471,7 @@ attributes_list = [
     'cycleway:both:traffic_sign',
     'cycleway:left:traffic_sign',
     'cycleway:right:traffic_sign',
-    
+
     'cycleway:lanes',
     'cycleway:lanes:forward',
     'cycleway:lanes:backward',
@@ -529,12 +529,17 @@ attributes_list_finally_retained = [
     'data_incompleteness',
     'data_missing',
     'filter_way_type',
-    'filter_usable'
+    'filter_usable',
+    'miss_maxspeed',
+    'miss_smoothness',
+    'miss_lit',
+    'miss_surface',
+    'miss_width',
 ]
 
 
 #-------------------------------
-#   V a r i a b l e s   E n d   
+#   V a r i a b l e s   E n d
 #-------------------------------
 
 
@@ -577,7 +582,7 @@ def deriveSeparation(feature, traffic_mode):
             separation = separation_right
 
             #TODO: Wenn beidseitig gleicher traffic_mode, dann schwächere separation übergeben
-            
+
     #default for the left side: adjacent motor vehicle traffic
     if traffic_mode == 'motor_vehicle':
         if traffic_mode_right in ['motor_vehicle', 'parking', 'psv']:
@@ -719,6 +724,7 @@ else:
 
     #list of new attributes, important for calculating cycling quality index
     new_attributes_dict = {
+
     'way_type': 'String',
     'index': 'Int',
     'index_10': 'Int',
@@ -766,7 +772,12 @@ else:
     'data_incompleteness': 'Double',
     'data_missing': 'String',
     'filter_usable': 'Int',
-    'filter_way_type': 'String'
+    'filter_way_type': 'String',
+    'miss_maxspeed': 'Int',
+    'miss_smoothness': 'Int',
+    'miss_lit': 'Int',
+    'miss_surface': 'Int',
+    'miss_width': 'Int',
     }
     for attr in list(new_attributes_dict.keys()):
         attributes_list.append(attr)
@@ -834,6 +845,11 @@ else:
     id_data_missing = layer.fields().indexOf('data_missing')
     id_filter_usable = layer.fields().indexOf('filter_usable')
     id_filter_way_type = layer.fields().indexOf('filter_way_type')
+    id_miss_maxspeed = layer.fields().indexOf("miss_maxspeed")
+    id_miss_smoothness = layer.fields().indexOf("miss_smoothness")
+    id_miss_lit = layer.fields().indexOf("miss_lit")
+    id_miss_surface = layer.fields().indexOf("miss_surface")
+    id_miss_width = layer.fields().indexOf("miss_width")
 
     QgsProject.instance().addMapLayer(layer, False)
 
@@ -965,7 +981,7 @@ else:
                         else:
                             if sidepath_dict[id]['highway'][highway] >= checks * 0.66:
                                 is_sidepath = 'yes'
-                
+
                 if is_sidepath != 'yes':
                     for name in sidepath_dict[id]['name'].keys():
                         if checks <= 2:
@@ -1209,7 +1225,7 @@ else:
                                     way_type = 'cycle track'
                                 else:
                                     way_type = 'cycle path'
-                            
+
                             elif is_sidepath == 'yes':
                                 separation_motor_vehicle = deriveSeparation(feature, 'motor_vehicle')
                                 if not separation_motor_vehicle in [NULL, 'no', 'none']:
@@ -1395,6 +1411,7 @@ else:
                     if proc_width and proc_oneway == 'no':
                         proc_width *= 1.6 #default values are for oneways - if the way isn't a oneway, widen the default
                     data_missing = addDelimitedValue(data_missing, 'width')
+                    layer.changeAttributeValue(feature.id(), id_miss_width, 1)
             if way_type == 'segregated path':
                 highway = feature.attribute('highway')
                 if highway == 'path':
@@ -1408,6 +1425,7 @@ else:
                             else:
                                 proc_width = width / 2
                         data_missing = addDelimitedValue(data_missing, 'width')
+                        layer.changeAttributeValue(feature.id(), id_miss_width, 1)
                 else:
                     proc_width = getNumber(feature.attribute('width'))
                 if not proc_width:
@@ -1415,6 +1433,7 @@ else:
                     if proc_oneway == 'no':
                         proc_width *= 1.6
                     data_missing = addDelimitedValue(data_missing, 'width')
+                    layer.changeAttributeValue(feature.id(), id_miss_width, 1)
             if way_type in ['shared road', 'shared traffic lane', 'shared bus lane', 'bicycle road', 'track or service']:
                 #on shared traffic or bus lanes, use a width value based on lane width, not on carriageway width
                 if way_type in ['shared traffic lane', 'shared bus lane']:
@@ -1671,6 +1690,7 @@ else:
                             else:
                                 proc_surface = default_highway_surface_dict['path']
                             data_missing = addDelimitedValue(data_missing, 'surface')
+                            layer.changeAttributeValue(feature.id(), id_miss_surface, 1)
                     if not proc_smoothness:
                         proc_smoothness = feature.attribute('cycleway:smoothness')
                         if not proc_smoothness:
@@ -1701,10 +1721,14 @@ else:
                             else:
                                 proc_surface = default_highway_surface_dict['path']
                         data_missing = addDelimitedValue(data_missing, 'surface')
+                        layer.changeAttributeValue(feature.id(), id_miss_surface, 1)
                     if not proc_smoothness:
                         proc_smoothness = feature.attribute('smoothness')
                         if not proc_smoothness:
                             data_missing = addDelimitedValue(data_missing, 'smoothness')
+                            layer.changeAttributeValue(
+                                feature.id(), id_miss_smoothness, 1
+                            )
 
             #if more than one surface value is tagged (delimited by a semicolon), use the weakest one
             if ';' in proc_surface:
@@ -1713,7 +1737,7 @@ else:
                 proc_surface = NULL
             if proc_smoothness not in smoothness_factor_dict:
                 proc_smoothness = NULL
-            
+
             layer.changeAttributeValue(feature.id(), id_proc_surface, proc_surface)
             layer.changeAttributeValue(feature.id(), id_proc_smoothness, proc_smoothness)
 
