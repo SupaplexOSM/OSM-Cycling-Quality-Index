@@ -749,9 +749,9 @@ else:
             proc_width = NULL
             if way_type in ['cycle path', 'cycle track', 'shared path', 'shared footway', 'crossing', 'link', 'cycle lane (advisory)', 'cycle lane (exclusive)', 'cycle lane (protected)', 'cycle lane (central)']:
                 #width for cycle lanes and sidewalks have already been derived from original tags when calculating way offsets
-                proc_width = d.getNumber(feature.attribute('width'))
+                proc_width = d.getNumber(feature.attribute('cycleway:width')) #check for cycleway:width first for cases, where segregated isn't tagged correctly
                 if not proc_width:
-                    proc_width = d.getNumber(feature.attribute('cycleway:width'))
+                    proc_width = d.getNumber(feature.attribute('width'))
                     if not proc_width:
                         if way_type in ['cycle path', 'shared path', 'cycle lane (protected)']:
                             proc_width = p.default_highway_width_dict['path']
