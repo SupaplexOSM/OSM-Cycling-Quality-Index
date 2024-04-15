@@ -751,16 +751,18 @@ else:
                 #width for cycle lanes and sidewalks have already been derived from original tags when calculating way offsets
                 proc_width = d.getNumber(feature.attribute('width'))
                 if not proc_width:
-                    if way_type in ['cycle path', 'shared path', 'cycle lane (protected)']:
-                        proc_width = p.default_highway_width_dict['path']
-                    elif way_type == 'shared footway':
-                        proc_width = p.default_highway_width_dict['footway']
-                    else:
-                        proc_width = p.default_highway_width_dict['cycleway']
-                    if proc_width and proc_oneway == 'no':
-                        proc_width *= 1.6 #default values are for oneways - if the way isn't a oneway, widen the default
-                    data_missing = d.addDelimitedValue(data_missing, 'width')
-                    layer.changeAttributeValue(feature.id(), id_data_missing_width, 1)
+                    proc_width = d.getNumber(feature.attribute('cycleway:width'))
+                    if not proc_width:
+                        if way_type in ['cycle path', 'shared path', 'cycle lane (protected)']:
+                            proc_width = p.default_highway_width_dict['path']
+                        elif way_type == 'shared footway':
+                            proc_width = p.default_highway_width_dict['footway']
+                        else:
+                            proc_width = p.default_highway_width_dict['cycleway']
+                        if proc_width and proc_oneway == 'no':
+                            proc_width *= 1.6 #default values are for oneways - if the way isn't a oneway, widen the default
+                        data_missing = d.addDelimitedValue(data_missing, 'width')
+                        layer.changeAttributeValue(feature.id(), id_data_missing_width, 1)
             if way_type == 'segregated path':
                 highway = feature.attribute('highway')
                 if highway == 'path':
